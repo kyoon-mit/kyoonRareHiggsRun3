@@ -6,4 +6,4 @@
 > branch: main
 
     .
-    |-- ccJPsi        # $H \rightarrow c \bar{c} + J/\Psi$ channel
+    |-- ccJPsi        # H -> ccbar + J/Psi
