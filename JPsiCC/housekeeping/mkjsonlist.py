@@ -3,6 +3,7 @@ This housekeeping script prints a string output of a list of the file names in a
 which can be copied and pasted onto a json file.
 '''
 
+from glob import glob
 import os
 import re
 import json
@@ -17,7 +18,7 @@ def sorted_alphanumeric(data):
     alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
     return sorted(data, key=alphanum_key)
 
-dirlist = sorted_alphanumeric(os.listdir(mydir))
+dirlist = sorted_alphanumeric(glob(os.path.join(mydir, '*')))
 
 json_str = json.dumps(dirlist, indent=4)
 print(json_str)
