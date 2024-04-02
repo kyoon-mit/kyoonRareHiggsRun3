@@ -3,6 +3,42 @@
 using namespace ROOT;
 
 /*
+* Select items in a vector of float given a vector of indices
+*/
+RVecF SelectByIdx(
+    const RVecF& FloatVector,
+    const RVecI& Idx
+) {
+    RVecF return_vals;
+    for (const int& idx: Idx) {
+        return_vals.push_back(FloatVector[idx]);
+    }
+    return return_vals;
+}
+
+/*
+* Finds the index of the Higgs
+*/
+int HiggsIdx(
+    const RVecI& GenPart_pdgId,
+    const RVecI& GenPart_genPartIdxMother
+) {
+    int higgs_idx = -1;
+    int idx_low = 0;
+    int idx_high = GenPart_pdgId.size();
+    for (int i=idx_high; i>=idx_low; i--) {
+        if (GenPart_genPartIdxMother[i] < 0 || GenPart_genPartIdxMother[i] > idx_high) continue; // TODO: why these nonsensical indices?
+        if (GenPart_pdgId[GenPart_genPartIdxMother[i]]==25 && // if mother is Higgs
+            GenPart_pdgId[i]!=25 // but itself is not the Higgs
+            ) {
+            higgs_idx = GenPart_genPartIdxMother[i]; // mother as the Higgs
+            break;
+        }
+    }
+    return higgs_idx;
+}
+
+/*
 * Finds gen-level indices of the Higgs daughter particles
 */
 RVecI HiggsDaughtersIdx(
