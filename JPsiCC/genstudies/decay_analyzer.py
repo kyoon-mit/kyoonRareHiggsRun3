@@ -62,7 +62,7 @@ rdf = (rdf.Define('GenPart_HiggsDaughters_pdgId',
         .Define('HiggsDaughters_pt',
                 'SelectByIdx(GenPart_pt, GenPart_HiggsDaughters_idx)')
         .Define('HiggsDaughters_px',
-                'SelectByIdx(GenPart_energy, GenPart_HiggsDaughters_idx)')
+                'SelectByIdx(GenPart_px, GenPart_HiggsDaughters_idx)')
         .Define('HiggsDaughters_py',
                 'SelectByIdx(GenPart_py, GenPart_HiggsDaughters_idx)')
         .Define('HiggsDaughters_pz',
@@ -97,8 +97,7 @@ branches_of_second_interest =\
 
 rdf.Snapshot('GenEvents', 'genevents.root', (branches_of_interest + branches_of_second_interest))
 
-# Get some histograms
-
+# Get histograms
 my_hists = []
 for var in branches_of_interest:
     print(var)
