@@ -1,4 +1,5 @@
 #include "../interface/GenAnalyzer.h"
+#include <math.h> 
 
 using namespace ROOT;
 
@@ -132,6 +133,16 @@ RVecI GenericDaughtersPDG(
         }
     }
     return daughters_pdg;
+}
+
+/*
+* Computes the dR between two particles.
+*/
+float DeltaR(
+    const float& eta1, const float& phi1,
+    const float& eta2, const float& phi2
+) {
+    return sqrt(pow(eta1-eta2, 2.) + pow(phi1-phi2, 2.));
 }
 
 /*
