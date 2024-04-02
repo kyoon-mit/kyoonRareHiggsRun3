@@ -6,6 +6,9 @@ from kytools import jsonreader
 import os
 import ROOT
 
+# Load macro
+ROOT.gSystem.CompileMacro(os.path.join(os.environ['HRARE_DIR'], 'JPsiCC', 'src', 'GenAnalyzer.cc'), 'k')
+
 # Disable multithreading for now
 ROOT.DisableImplicitMT()
 
@@ -19,31 +22,19 @@ genevents = jsonreader.get_chain_from_json(anpath='JPsiCC',
 rdf = ROOT.RDataFrame(genevents)
 
 # Find Higgs Daughter
-ROOT.gInterpreter.Declare(
-"""
-using namespace ROOT;
-RVec<int> HiggsDaughtersPDG(
-    const RVecI& GenPart_pdgId,
-    const RVecI& GenPart_genPartIdxMother
-) {
-    RVec<int> daughters_pdg;
-    int idx_low = 0;
-    int idx_high = GenPart_pdgId.size();
-    for (int i=idx_high; i>=idx_low; i--) {
-        if (GenPart_genPartIdxMother[i] < 0 || GenPart_genPartIdxMother[i] > idx_high) continue; // TODO: why these nonsensical indices?
-        if (GenPart_pdgId[GenPart_genPartIdxMother[i]]==25 && // if mother is Higgs
-            GenPart_pdgId[i]!=25 // but itself is not the Higgs
-            ) {
-            daughters_pdg.push_back(GenPart_pdgId[i]);
-        }
-    }
-    return daughters_pdg;
-}
-""")
-
 rdf = rdf.Define('GenPart_HiggsDaughters_pdgId',
-                 'HiggsDaughtersPDG(GenPart_pdgId, GenPart_genPartIdxMother)')
-rdf.Snapshot('GenEvents', 'genevents.root', ['GenPart_HiggsDaughters_pdgId'])
+                 'HiggsDaughtersPDG(GenPart_pdgId, GenPart_genPartIdxMother)')\
+         .Define('GenPart_HiggsDaughters_idx',
+                 'HiggsDaughtersIdx(GenPart_pdgId, GenPart_genPartIdxMother)')\
+         .Define('GenPart_HiggsGrandDaughters_pdgId',
+                 'GenericDaughtersPDG(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_HiggsDaughters_idx)')\
+         .Define('GenPart_HiggsGrandDaughters_idx',
+                 'GenericDaughtersIdx(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_HiggsDaughters_idx)')
+
+rdf.Snapshot('GenEvents', 'genevents.root', ['GenPart_HiggsDaughters_pdgId',
+                                             'GenPart_HiggsDaughters_idx',
+                                             'GenPart_HiggsGrandDaughters_pdgId',
+                                             'GenPart_HiggsGrandDaughters_idx'])
 
 # Get some histograms
 # vars_of_interest = ['GenPart_HiggsDaughters_pdgId']
