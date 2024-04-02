@@ -133,3 +133,45 @@ RVecI GenericDaughtersPDG(
     }
     return daughters_pdg;
 }
+
+/*
+* Computes the PxPyPzE four-vector sum of two particles.
+*/
+ROOT::Math::PxPyPzEVector SumPxPyPzE(
+    const float& px1, const float& py1, const float& pz1, const float& E1,
+    const float& px2, const float& py2, const float& pz2, const float& E2
+) {
+    ROOT::Math::PxPyPzEVector particle1(px1, py1, pz1, E1);
+    ROOT::Math::PxPyPzEVector particle2(px2, py2, pz2, E2);
+
+    ROOT::Math::PxPyPzEVector sum_vector = particle1 + particle2;
+    return sum_vector;
+}
+
+/*
+* Computes the PxPyPzM four-vector sum of two particles.
+*/
+ROOT::Math::PxPyPzMVector SumPxPyPzM(
+    const float& px1, const float& py1, const float& pz1, const float& m1,
+    const float& px2, const float& py2, const float& pz2, const float& m2
+) {
+    ROOT::Math::PxPyPzMVector particle1(px1, py1, pz1, m1);
+    ROOT::Math::PxPyPzMVector particle2(px2, py2, pz2, m2);
+
+    ROOT::Math::PxPyPzMVector sum_vector = particle1 + particle2;
+    return sum_vector;
+}
+
+/*
+* Computes the PtEtaPhiE four-vector sum of two particles.
+*/
+ROOT::Math::PtEtaPhiEVector SumPtEtaPhiE(
+    const float& pt1, const float& eta1, const float& phi1, const float& E1,
+    const float& pt2, const float& eta2, const float& phi2, const float& E2
+) {
+    ROOT::Math::PtEtaPhiEVector particle1(pt1, eta1, phi1, E1);
+    ROOT::Math::PtEtaPhiEVector particle2(pt2, eta2, phi2, E2);
+
+    ROOT::Math::PtEtaPhiEVector sum_vector = particle1 + particle2;
+    return sum_vector;
+}
