@@ -26,6 +26,10 @@ RVecI GenericDaughtersPDG(const RVecI& GenPart_pdgId,
 float DeltaR(
     const float& eta1, const float& phi1,
     const float& eta2, const float& phi2);
+int IndexFindPDG(
+    const RVecI& vec_pdgId, const int& PDGID);
+std::array<int, 2> SortByPt(
+    const int& index1, const int& index2, RVecF& vec_pt); 
 ROOT::Math::PxPyPzEVector SumPxPyPzE(
     const float& px1, const float& py1, const float& pz1, const float& E1,
     const float& px2, const float& py2, const float& pz2, const float& E2);

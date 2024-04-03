@@ -146,6 +146,39 @@ float DeltaR(
 }
 
 /*
+* Find index based on PDG.
+*/
+int IndexFindPDG(
+    const RVecI& vec_pdgId, const int& PDGID
+) {
+    int idx = 999999999;
+    for (long unsigned int i=0; i<vec_pdgId.size(); i++) {
+        if (vec_pdgId[i] == PDGID) {
+            idx = i;
+            break;
+        }
+    }
+    return idx;
+}
+
+/*
+* Sort the leading and sub-leading particle indices according to their transverse momenta.
+*/
+std::array<int, 2> SortByPt(
+    const int& index1, const int& index2, RVecF& vec_pt
+) {
+    std::array<int, 2> sorted_indices;
+    if (vec_pt[index1] >= vec_pt[index2]) {
+        sorted_indices[0] = index1;
+        sorted_indices[1] = index2;
+    } else {
+        sorted_indices[0] = index2;
+        sorted_indices[1] = index1;
+    }
+    return sorted_indices;
+}
+
+/*
 * Computes the PxPyPzE four-vector sum of two particles.
 */
 ROOT::Math::PxPyPzEVector SumPxPyPzE(
