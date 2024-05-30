@@ -6,8 +6,8 @@ Example usage:
 
 void getbranchlist(const char* fileName, const char* treeName)
 {
-    TFile f(fileName);
-    TTree* tree = (TTree*) f.Get(treeName);
+    TFile* f = TFile::Open(fileName, "READ");
+    TTree* tree = (TTree*) f->Get(treeName);
     TObjArray* branchlist = tree->GetListOfBranches();
     branchlist->Print();
 }
