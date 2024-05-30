@@ -65,7 +65,7 @@ def get_chain_from_json_xrtd(anpath, jsonname, keys, treename='events', xrtd_pro
     if not all(isinstance(item, str) for item in jsonobject):
         raise TypeError('JSON object is not list(str).')
     chain = TChain(treename)
-    print(f'{'\033[1;36m'}kytools: Opening files from json:{'\033[0m'}')
+    print('{}kytools: Opening files from json...{}'.format('\033[1;36m', '\033[0m'))
     for item in jsonobject:
         print('    ' + os.path.join(xrtd_proxy, *item.split('/')))
         chain.Add(os.path.join(xrtd_proxy, *item.split('/')))
