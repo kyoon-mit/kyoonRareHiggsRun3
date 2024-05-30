@@ -19,7 +19,7 @@ class Models:
     delete during the lifetime of the class instance.
     """
     def __init__(self):
-        print('{}kytools: You have created an instance of rootpdf.Models.{}'.format('\033[1;34m', '\033[0m'))
+        print(f'{'\033[1;34m'}kytools: You have created an instance of rootpdf.Models.{'\033[0m'}')
         self._varlist = []
         self._pdflist = []
 
@@ -36,7 +36,7 @@ class Models:
         """
         var = RooRealVar(name, title, value, low, high, unit)
         self._varlist.append(var)
-        print ('{}kytools: Created a variable with the name, {}.{}'.format('\033[0;36m', name, '\033[0m'))
+        print (f'{'\033[0;36m'}kytools: Created a variable with the name, {name}.{'\033[0m'}')
         return var
 
     def gaussian(self, x, mean, mean_low, mean_high,
@@ -58,7 +58,7 @@ class Models:
         pdfname = 'gauss'
         pdf = RooGaussian(pdfname, pdfname, x, mu, sigma)
         self._pdflist.append(pdf)
-        print ('{}kytools: Created a Gaussian with the name, {}.{}'.format('\033[0;32m', pdfname, '\033[0m'))
+        print (f'{'\033[0;32m'}kytools: Created a Gaussian with the name, {pdfname}.{'\033[0m'}')
         return pdf
     
     def crystalball(self, x, mean, mean_low, mean_high,
@@ -97,7 +97,7 @@ class Models:
         pdfname = 'bern{}_{}'.format(degree, suffix)
         pdf = RooBernstein(pdfname, pdfname, x, coefflist)
         self._pdflist.append(pdf)
-        print ('{}kytools: Created a Bernstein polynomial of degree {} (d.o.f. = {}) with the name, {}.{}'.format('\033[0;32m', degree, degree+1, pdfname, '\033[0m'))
+        print (f'{'\033[0;32m'}kytools: Created a Bernstein polynomial of degree {degree} (d.o.f. = {degree+1}) with the name, {pdfname}.{'\033[0m'}')
         return pdf
 
 # ==============================================================================
@@ -120,8 +120,8 @@ class FitIt:
         self._data = dict() # Dictionary for RooDataHist or RooDataSet
         self._pdf = dict() # Dictionary for RooAbsPdf
 
-        print('{}kytools: You have created an instance of rootpdf.FitIt.{}'.format('\033[1;34m', '\033[0m'))
-        print('{}kytools: Created a RooWorkspace with the name, {}.{}'.format('\033[0;32m', ws_name, '\033[0m'))
+        print(f'{'\033[1;34m'}kytools: You have created an instance of rootpdf.FitIt.{'\033[0m'}')
+        print(f'{'\033[0;32m'}kytools: Created a RooWorkspace with the name, {ws_name}.{'\033[0m'}')
 
     # def blind(self, range_low, range_high):
     #     """TODO
@@ -173,9 +173,9 @@ class FitIt:
         pdf = self._pdf[pdf_key]
         params = pdf.getParameters(0)
         status = -1
-        print ('{}kytools: Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
+        print (f'{'\033[1;36m'}kytools: Performing likelihood fit of {pdf.GetTitle()} to {data.GetTitle()}.{'\033[0m'}')
         for ntries in range(1, max_tries+1):
-            print ('{}kytools: Fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
+            print (f'{'\033[0;36m'}kytools: Fit trial #{ntries}.{'\033[0m'}')
             fit_result = pdf.fitTo(data,
                                    RooFit.Save(True),
                                    RooFit.Minimizer('Minuit2', 'minimize'),
@@ -189,22 +189,22 @@ class FitIt:
                 ntries += 1
             else:
                 break
-        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', status, '\033[0m'))
+        print (f'{'\033[0;36m'}kytools: Likelihood fit has exited with status {status}.{'\033[0m'}')
         match status:
             case 0:
-                print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         Likelihood fit has converged.{'\033[0m'}')
             case 1:
-                print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         Covariance was made positive definite.{'\033[0m'}')
             case 2:
-                print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         Hessian is invalid.{'\033[0m'}')
             case 3:
-                print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         EDM is above max.{'\033[0m'}')
             case 4:
-                print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         Reached call limit.{'\033[0m'}')
             case 5:
-                print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         Please investigate.{'\033[0m'}')
             case _:
-                print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+                print (f'{'\033[0;36m'}         DISASTER!{'\033[0m'}')
 
     def add_norm(self):
         pass
@@ -219,7 +219,7 @@ class FitIt:
             fname (str): File name to store your workspace.
             path (str, optional): Directory name to save your workspace.
         """
-        print ('{}kytools: Importing contents to workspace {}.{}'.format('\033[1;36m', self._workspace.GetName(), '\033[0m'))
+        print (f'{'\033[1;36m'}kytools: Importing contents to workspace {self._workspace.GetName()}.{'\033[0m'}')
         for _, data in self._data.items():
             getattr(self._workspace, 'import')(data)
         for _, pdf in self._pdf.items():
@@ -227,4 +227,4 @@ class FitIt:
         os.makedirs(path, exist_ok=True)
         save_path = os.path.join(path, fname)
         self._workspace.writeToFile(save_path)
-        print ('{}kytools: Saved workspace {} to {}.{}'.format('\033[1;36m', self._workspace.GetName(), save_path, '\033[0m'))
+        print (f'{'\033[1;36m'}kytools: Saved workspace {self._workspace.GetName()} to {save_path}.{'\033[0m'}')
