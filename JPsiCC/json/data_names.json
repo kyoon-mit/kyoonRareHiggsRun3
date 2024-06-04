@@ -15210,12 +15210,6 @@
                 "/store/user/paus/nanohr/D04/JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM/FEDB5866-4487-9F46-999C-E49005415B16.root",
                 "/store/user/paus/nanohr/D04/JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM/FF5562ED-0950-F445-99E2-C1CEE9393882.root"
             ]
-        },
-        "test":
-        {
-            "BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL16MiniAODAPVv2-106X_mcRun2_asymptotic_preVFP_v11-v1+MINIAODSIM": [
-                "/store/user/paus/nanohr/D04/BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL16MiniAODAPVv2-106X_mcRun2_asymptotic_preVFP_v11-v1+MINIAODSIM/00154B4F-3188-6049-8ECF-655F0E943E1B.root"
-            ]
         }
     }
 }

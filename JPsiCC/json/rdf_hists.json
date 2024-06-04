@@ -1,0 +1,69 @@
+{
+    "NANOAOD_to_RDF":
+    {
+        "JPsi":
+        {
+            "Jpsi_kin_mass": {"name": "Jpsi_kin_mass", "title": "Jpsi mass;m_{mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 90, "xmin": 1.5, "xmax": 4.5},
+            "Jpsi_kin_pt": {"name": "Jpsi_kin_pt", "title": "Jpsi p_{T};p_{T} {mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},        
+            "Jpsi_muon1_pt": {"name": "Jpsi_muon1_pt", "title": "p_{T}(mu);p_{T}(mu) (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "Jpsi_muon2_pt": {"name": "Jpsi_muon2_pt", "title": "p_{T}(mu);p_{T}(mu)  (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "Jpsi_kin_eta": {"name": "Jpsi_kin_eta", "title": "Jpsi eta;eta_{mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": -5.0, "xmax": 5.0},
+            "Jpsi_iso": {"name": "Jpsi_iso", "title": "Jpsi isolation;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "Jpsi_isoPho": {"name": "Jpsi_isoPho", "title": "Jpsi isolation;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "Jpsi_kin_lxy": {"name": "Jpsi_kin_lxy", "title": "Jpsi kin_lxy;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "Jpsi_kin_sipPV": {"name": "Jpsi_kin_sipPV", "title": "Jpsi kin_sipPV;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 5.0},
+            "Jpsi_muon1_isTighMuon": {"name": "Jpsi_muon1_isTighMuon", "title": "Jpsi muon1_isTighMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "Jpsi_muon1_isMediumMuon": {"name": "Jpsi_muon1_isMediumMuon", "title": "Jpsi muon1_isMediumMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "Jpsi_muon2_isTighMuon": {"name": "Jpsi_muon2_isTighMuon", "title": "Jpsi muon2_isTighMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "Jpsi_muon2_isMediumMuon": {"name": "Jpsi_muon2_isMediumMuon", "title": "Jpsi muon2_isMediumMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "Jpsi_leadingChargedMaxPt1": {"name": "Jpsi_leadingChargedMaxPt1", "title": "Jpsi Pt leadingCharged within ConedR04; p_{T}", "bin": 50, "xmin": 0.0, "xmax": 50.0},
+            "Jpsi_leadingCharged2dSignMaxPt1": {"name": "Jpsi_leadingCharged2dSignMaxPt1", "title": "Jpsi 2dSignMaxPt1 leadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
+            "Jpsi_leadingCharged3dSignMaxPt1": {"name": "Jpsi_leadingCharged3dSignMaxPt1", "title": "Jpsi 3dSignMaxPt1 leadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
+            "Jpsi_leadingChargedDxyMaxPt1": {"name": "Jpsi_leadingChargedDxyMaxPt1", "title": "Jpsi Dxy leadingCharged within ConedR04; d_{xy}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
+            "Jpsi_leadingChargedDzMaxPt1": {"name": "Jpsi_leadingChargedDzMaxPt1", "title": "Jpsi Dz leadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
+            "Jpsi_leadingChargedMaxPt2": {"name": "Jpsi_leadingChargedMaxPt2", "title": "Jpsi Pt subLeadingCharged within ConedR04; p_{T}", "bin": 50, "xmin": 0.0, "xmax": 50.0},
+            "Jpsi_leadingCharged2dSignMaxPt2": {"name": "Jpsi_leadingCharged2dSignMaxPt2", "title": "Jpsi 2dSignMaxPt1 subLeadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
+            "Jpsi_leadingCharged3dSignMaxPt2": {"name": "Jpsi_leadingCharged3dSignMaxPt2", "title": "Jpsi 3dSignMaxPt1 subLeadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
+            "Jpsi_leadingChargedDxyMaxPt2": {"name": "Jpsi_leadingChargedDxyMaxPt2", "title": "Jpsi Dxy subLeadingCharged within ConedR04; d_{xy}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
+            "Jpsi_leadingChargedDzMaxPt2": {"name": "Jpsi_leadingChargedDzMaxPt2", "title": "Jpsi Dz subLeadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1}
+        },
+        "Jet":
+        {
+            "jet1Pt": {"name": "jet1Pt", "title": "Leading Jet p_{T}; AK4 jet p_{T}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jet2Pt": {"name": "jet2Pt", "title": "Subleading Jet p_{T}; AK4 jet p_{T}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jet1Eta": {"name": "jet1Eta", "title": "Leading Jet eta; AK4 jet eta} (GeV);N_{Events}", "bin": 100, "xmin": -5.0, "xmax": 5.0},
+            "jet2Eta": {"name": "jet2Eta", "title": "Subleading Jet eta; AK4 jet eta } (GeV);N_{Events}", "bin": 100, "xmin": -5.0, "xmax": 5.0},        
+            "jet1CvL": {"name": "jet1CvL", "title": "Leading Jet CvL; AK4 btagDeepCvL (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jet2CvL": {"name": "jet2CvL", "title": "Subleading Jet CvL; AK4 btagDeepCvL (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jet1partonFlavour": {"name": "jet1partonFlavour", "title": "Leading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 25, "xmin": 0.0, "xmax": 25.0},
+            "jet2partonFlavour": {"name": "jet2partonFlavour", "title": "Subleading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 25, "xmin": 0.0, "xmax": 25.0},
+            "jetClosenMuons": {"name": "jetClosenMuons", "title": "Close nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.00, "xmax": 10.0},
+            "jetFarnMuons": {"name": "jetFarnMuons", "title": "Far nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetClosenElectrons": {"name": "jetClosenElectrons", "title": "Close Electrons; nElectron; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetFarnElectrons": {"name": "jetFarnElectrons", "title": "Far Electrons; nElectrons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetFarPtCharm": {"name": "jetFarPtCharm", "title": "Jet Far; AK4 pt Far (charm)(GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFarPtGluon": {"name": "jetFarPtGluon", "title": "Jet Far; AK4 pt Far (gluon) (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFarPt": {"name": "jetFarPt", "title": "Jet Far; AK4 pt Far (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetClosePt": {"name": "jetClosePt", "title": "Jet Close; AK4 pt Close (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFarcRegCorrScale": {"name": "jetFarcRegCorrScale", "title": "Jet Far; AK4 pt * cRegCorr / AK4 Gen pt Far;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetClosecRegCorrScale": {"name": "jetClosecRegCorrScale", "title": "Jet Close; AK4 pt * cRegCorr / AK4 Gen pt Close;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFarScale": {"name": "jetFarScale", "title": "Jet Far; AK4 pt / AK4 Gen pt Far;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetCloseScale": {"name": "jetCloseScale", "title": "Jet Close; AK4 pt / AK4 Gen pt Close;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFarcRegCorr": {"name": "jetFarcRegCorr", "title": "Jet Far; cRegCorr ;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetClosecRegCorr": {"name": "jetClosecRegCorr", "title": "cRegCorr;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFarCvL": {"name": "jetFarCvL", "title": "Jet Far; AK4 btagDeepCvL Far (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetCloseCvL": {"name": "jetCloseCvL", "title": "Jet Close; AK4 btagDeepCvL Close (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFarCvLCharm": {"name": "jetFarCvLCharm", "title": "Jet Far; AK4 btagDeepCvL Far -- charm (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFarCvLGluon": {"name": "jetFarCvLGluon", "title": "Jet Far; AK4 btagDeepCvL Far -- gluon (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFarpartonFlavour": {"name": "jetFarpartonFlavour", "title": "Jet Far; AK4 partonFlavour Far;N_{Events}", "bin": 25, "xmin": 0.0, "xmax": 25.0},
+            "jetClosepartonFlavour": {"name": "jetClosepartonFlavour", "title": "Jet Close; AK4 partonFlavour Close;N_{Events}", "bin": 25, "xmin": 0.0, "xmax": 25.0},
+            "jetFarnConst": {"name": "jetFarnConst", "title": "Jet Far; AK4 n constituent Far;N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
+            "jetClosenConst": {"name": "jetClosenConst", "title": "Jet Close; AK4 n constituent Close;N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
+            "jetCloseJPsiRatio": {"name": "jetCloseJPsiRatio", "title": "Jet Close; pt(JPsi) / AK4 pt(Jet);N_{Events}", "bin": 40, "xmin": 0.0, "xmax": 2.0}
+        },
+        "test":
+        {
+            "mJJ": {"name": "mJJ", "title": "mJJ", "bin": 50, "xmin": 0.0, "xmax": 250}
+        }
+    }
+}
