@@ -34,6 +34,23 @@ class JPsiCCAnalyzer:
         self._chainSIG = None
         self._rdfBKG = None
         self._rdfSIG = None
+        self._sfxBKG = ''
+        self._sfxCOMB = ''
+        if self._DATA:
+            self._sfxBKG = f'BKG_DATA_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+            self._sfxCOMB = f'COMB_DATA_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+        else:
+            self._sfxBKG = f'BKG_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+            self._sfxCOMB = f'COMB_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+        self._sfxSIG = f'SIG_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+        # Color scheme: http://arxiv.org/pdf/2107.02270
+        self._orange = ROOT.kOrange + 1
+        self._blue = ROOT.kAzure - 4
+        self._red = ROOT.kRed - 4
+        self._purple = ROOT.kMagenta - 5
+        self._gray = ROOT.kGray + 1
+        self._violet = ROOT.kViolet + 2
+
 
     def __getfilesBKG(self, treename, xrtd_proxy):
         """Internal method.
@@ -64,6 +81,19 @@ class JPsiCCAnalyzer:
         chain.Add(events)
         return chain
     
+    def __draw_hist(self, hist, model1d, draw_option='HIST'):
+        """Internal method.
+        """
+        c = ROOT.TCanvas()
+        bin_width = (model1d[4]-model1d[3])/model1d[2]
+        hist.Draw(draw_option)
+        hist.SetTitle(model1d[1])
+        hist.GetXaxis().SetTitle(model1d[1])
+        hist.GetYaxis().SetTitle(f'Events / {bin_width:.3g}')
+        c.Update()
+        return c
+
+
     def getfilesBKG(self, treename, xrtd_proxy):
         """Retrieve files.
 
@@ -119,11 +149,14 @@ class JPsiCCAnalyzer:
     def doSIG(self):
         """Do the signal analysis.
 
+        Args:
+            scale (float): Scale the signal by this factor.
+
         Returns:
            (None)
         """
         if self._chainSIG is None:
-            raise Exception("First open the files using one of the \'gefiles\' methods.")
+            raise Exception("First open the files using one of the \'getfiles\' methods.")
         rdf = ROOT.RDataFrame(self._chainSIG)
         self._rdfSIG = rdf_def_generic(rdf, self._LUMI, data=False)
 
@@ -141,27 +174,51 @@ class JPsiCCAnalyzer:
         """
         pass
     
-    def makehistsBKG(self):
+    def makehists(self, scaleSIG=1.):
         """Make histograms.
+
+        Args:
+            scaleSIG (float): Scale factor for the signal histogram.
 
         Returns:
             (None)
         """
         if self._rdfBKG is None:
             raise Exception("First run \'doBKG\'.")
-        hist_list = dict()
+        hlist_BKG, hlist_SIG = dict(), dict()
         hist_defs = jsonreader.get_object_from_json(anpath='JPsiCC',
                                                     jsonname='rdf_hists.json',
                                                     keys=['NANOAOD_to_RDF'])
+        savedir = os.path.join(os.environ['HRARE_DIR'], 'JPsiCC', 'plots', self._savedir)
+        if not os.path.exists(savedir): os.makedirs(savedir)
         for key, hdef in hist_defs['test'].items():
+            # Create Histo1D
             model1d = (f'{hdef["name"]}_{self._YEAR}', hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
-            print(model1d)
-            hist_list[key] = self._rdfBKG.Histo1D(model1d, hdef['name'], 'w')
-            c = ROOT.TCanvas()
-            hist_list[key].Draw()
-            c.SaveAs(os.path.join(self._savedir, f'{key}.png'))
-            c.Close()
+            hbkg = self._rdfBKG.Histo1D(model1d, hdef['name'], 'w')
+            hsig = self._rdfSIG.Histo1D(model1d, hdef['name'], 'w')
 
+            # Set color
+            hbkg.SetFillColorAlpha(self._orange, 0.6)
+            hsig.SetFillColorAlpha(self._blue, 0.6)
+
+            # Scale signal
+            hsig.Scale(scaleSIG)
+
+            # Create THStack
+            hs = ROOT.THStack()
+            hs.Add(hbkg.GetPtr())
+            hs.Add(hsig.GetPtr())
+
+            # Draw histograms
+            c_bkg = self.__draw_hist(hbkg, model1d)
+            c_sig = self.__draw_hist(hsig, model1d)
+            c_hstack = self.__draw_hist(hs, model1d, draw_option='HIST NOSTACK')
+
+            # Save TCanvas
+            c_bkg.SaveAs(os.path.join(savedir, f'{key}_{self._sfxBKG}.png'))
+            c_sig.SaveAs(os.path.join(savedir, f'{key}_{self._sfxSIG}.png'))
+            c_hstack.SaveAs(os.path.join(savedir, f'{key}_stack_{self._sfxCOMB}.png'))
+    
 # Draw
 # save_dir = os.path.join(os.environ['HRARE_DIR'], 'JPsiCC', 'plots', 'jetstudies', 'control')
 # for hist in my_hists:
@@ -174,5 +231,7 @@ if __name__=='__main__':
     analyzer = JPsiCCAnalyzer(DATA=False, YEAR=2018, VERSION='test', LUMI=100, CAT='generic')
     # analyzer.getfiles('Events', 'root://bost-cms-xcache01.lhcone.es.net:1094//') # xcache server down
     analyzer.getfilesBKG('Events', 'root://xrootd.cmsaf.mit.edu//')
+    analyzer.getfilesSIG('Events')
     analyzer.doBKG()
-    analyzer.makehistsBKG()
+    analyzer.doSIG()
+    analyzer.makehists(scaleSIG=10e4)
