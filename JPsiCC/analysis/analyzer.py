@@ -6,7 +6,7 @@ JPsiCC analysis-specific analyzer
 '''
 
 from kytools import jsonreader
-from rdfdefines import rdf_def_generic
+from rdfdefines import rdf_def_weights, rdf_def_generic
 import os, json
 import ROOT
 
@@ -14,14 +14,14 @@ import ROOT
 ROOT.DisableImplicitMT()
 
 class JPsiCCAnalyzer:
-    """JPsi analyzer.
+    '''JPsi analyzer.
 
     Args:
         DATA (bool): Whether to use DATA
         YEAR (int): Year of data-taking. Provide any number if using MC.
         VERSION (str): Version of the files.
         LUMI (float): Luminosity
-    """
+    '''
     def __init__(self, DATA, YEAR, VERSION, LUMI, CAT):
         self._DATA = DATA
         self._YEAR = YEAR
@@ -53,26 +53,26 @@ class JPsiCCAnalyzer:
 
 
     def __getfilesBKG(self, treename, xrtd_proxy):
-        """Internal method.
-        """
+        '''Internal method.
+        '''
         if self._DATA:
             meta_json_name = 'data_names.json'
         else:
             meta_json_name = 'MC_bkg_names.json'
-        meta_names = jsonreader.get_object_from_json(self._anpath, meta_json_name, ['kraken', self._VERSION])
+        meta_info = jsonreader.get_object_from_json(self._anpath, meta_json_name, ['kraken', self._VERSION, self._YEAR])
         chain = ROOT.TChain(treename)
-        for name in meta_names:
+        for info in meta_info:
             events = jsonreader.get_chain_from_json_xrtd(anpath=self._anpath,
                                                          jsonname='NANOAOD.json',
-                                                         keys=['kraken', self._VERSION, name],
+                                                         keys=['kraken', self._VERSION, info['dataset']],
                                                          treename=treename,
                                                          xrtd_proxy=xrtd_proxy)
             chain.Add(events)
         return chain
     
     def __getfilesSIG(self, treename):
-        """Internal method.
-        """
+        '''Internal method.
+        '''
         chain = ROOT.TChain(treename)
         events = jsonreader.get_chain_from_json(anpath=self._anpath,
                                                 jsonname='NANOAOD.json',
@@ -81,9 +81,36 @@ class JPsiCCAnalyzer:
         chain.Add(events)
         return chain
     
+    def __createWeightedRDF(self, treename, nanoaodjson_key, dataset, xsec, xsec_sigma, xrtd_proxy=''):
+        '''Internal method.
+
+        Open a dataset and load it onto a RDF with proper weights.
+        Each dataset will have different cross sections, and this is the base-level
+        method to load a dataset with a single cross section.
+
+        Args:
+            treename (str): Name of the TTree in the target ROOT files.
+            nanoaodjson_key (str): Top-level key in the NANOAOD.json.
+                e.g. 'mariadlf', 'kraken', etc.
+            dataset (str): Name of the dataset.
+                For gen-level signal, provide 'GEN-signal.'
+            xsec (float): The cross section of this dataset.
+            xsec_sigma (float): The uncertainty on the cross section.
+            xrtd_proxy (str, optional): If provided, it will open a remote file with the proxy.
+                Otherwise, it will open a local file.
+                Defaults to ''.
+        '''
+        filenames = jsonreader.get_filenames_from_json(anpath=self._anpath,
+                                                       jsonname='NANOAOD.json',
+                                                       keys=[nanoaodjson_key, self._VERSION, dataset],
+                                                       xrtd_proxy=xrtd_proxy)
+        rdf = ROOT.RDataFrame(treename, filenames)
+        rdf = rdf_def_weights(rdf=rdf, lumi=self._LUMI, data=self._DATA, xsec=xsec, xsec_sigma=xsec_sigma)
+        return rdf
+
     def __draw_hist(self, hist, model1d, draw_option='HIST'):
-        """Internal method.
-        """
+        '''Internal method.
+        '''
         c = ROOT.TCanvas()
         bin_width = (model1d[4]-model1d[3])/model1d[2]
         hist.Draw(draw_option)
@@ -93,9 +120,8 @@ class JPsiCCAnalyzer:
         c.Update()
         return c
 
-
     def getfilesBKG(self, treename, xrtd_proxy):
-        """Retrieve files.
+        '''Retrieve files.
 
         Args:
             treename (str): Name of the TTree.
@@ -103,22 +129,22 @@ class JPsiCCAnalyzer:
 
         Returns:
             (None)
-        """
+        '''
         self._chainBKG = self.__getfilesBKG(treename, xrtd_proxy)
 
     def getfilesSIG(self, treename):
-        """Retrieve files.
+        '''Retrieve files.
 
         Args:
             treename (str): Name of the TTree.
 
         Returns:
             (None)
-        """
+        '''
         self._chainSIG = self.__getfilesSIG(treename)
 
     def getfiles_local(self, treename, filenames, signal=True):
-        """Retrieve files locally.
+        '''Retrieve files locally.
 
         Args:
             treename (str): Name of the TTree.
@@ -128,7 +154,7 @@ class JPsiCCAnalyzer:
 
         Returns:
             (None)
-        """
+        '''
         chain = ROOT.TChain(treename)
         for name in filenames:
             chain.Add(name)
@@ -136,32 +162,32 @@ class JPsiCCAnalyzer:
         else: self._chainBKG = chain
 
     def doBKG(self):
-        """Do the background analysis.
+        '''Do the background analysis.
 
         Returns:
            (None)
-        """
+        '''
         if self._chainBKG is None:
             raise Exception("First open the files using one of the \'gefiles\' methods.")
         rdf = ROOT.RDataFrame(self._chainBKG)
         self._rdfBKG = rdf_def_generic(rdf, self._LUMI, self._DATA)
 
     def doSIG(self):
-        """Do the signal analysis.
+        '''Do the signal analysis.
 
         Args:
             scale (float): Scale the signal by this factor.
 
         Returns:
            (None)
-        """
+        '''
         if self._chainSIG is None:
             raise Exception("First open the files using one of the \'getfiles\' methods.")
         rdf = ROOT.RDataFrame(self._chainSIG)
         self._rdfSIG = rdf_def_generic(rdf, self._LUMI, data=False)
 
     def snapshot(self, branches, outname, signal=True):
-        """Create snapshot of the RDF.
+        '''Create snapshot of the RDF.
 
         Args:
             branches (list(str)): Name of the branches to create a snapshot.
@@ -171,18 +197,18 @@ class JPsiCCAnalyzer:
 
         Returns:
             (None)
-        """
+        '''
         pass
     
     def makehists(self, scaleSIG=1.):
-        """Make histograms.
+        '''Make histograms.
 
         Args:
             scaleSIG (float): Scale factor for the signal histogram.
 
         Returns:
             (None)
-        """
+        '''
         if self._rdfBKG is None:
             raise Exception("First run \'doBKG\'.")
         hlist_BKG, hlist_SIG = dict(), dict()
