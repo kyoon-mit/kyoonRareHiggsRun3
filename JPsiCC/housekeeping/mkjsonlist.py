@@ -3,6 +3,7 @@ This housekeeping script prints a string output of a list of the file names in a
 which can be copied and pasted onto a json file.
 '''
 
+from kytools import jsonreader
 from subprocess import check_output
 from glob import glob
 import os, sys, re, json
@@ -45,8 +46,44 @@ def make_json(dirs):
     json_str = json.dumps(dirs, indent=4)
     return json_str
 
+def make_json_spec(anpath, jsonname, keys, year, data_type):
+    '''Make the json spec file that will be sued in RDataFrame.
+
+    See the 'Creating an RDataFrame from a dataset specification file' section in
+    https://root.cern/doc/master/classROOT_1_1RDataFrame.html#crash-course.
+
+    Args:
+        anpath (str): Path to the analysis folder, relative to HRARE_DIR.
+            e.g. 'JPsiCC'
+        jsonname (str): Name of the JSON file.
+            It must be a file that includes the year, dataset name, cross section,
+            and luminosity, e.g. 'MC_bkg_names.json'.
+        keys (list(str)): List of the keys to the JSON object, in sequential order.
+        year (int): Year of the dataset.
+        data_type (str): Type of data, i.e. 'DATA', 'MC_BKG', or 'MC_SIG'.
+
+    Returns:
+        jsondict (dict): Dictionary of the JSON itmes.
+    '''
+    jsondict = {}
+    jsondict['samples'] = {}
+    dataset_meta = jsonreader.get_object_from_json(anpath, jsonname, keys)
+    nanoaod_json = jsonreader.get_object_from_json(anpath, 'NANOAOD.json', keys) # where the actual file is stored
+    for item in dataset_meta[year]:
+        jsondict['samples'][item['dataset']] = {
+            'trees': ['Events'],
+            'files': nanoaod_json[item['dataset']],
+            'metadata': {
+                'xsec': item['xsec'],
+                'xsec_sigma': item['xsec_sigma'],
+                'lumi': item['lumi'],
+                'sample_category': data_type,
+                'year': year
+            }
+        }
+    return jsondict
+
 if __name__=='__main__':
-    dirdict = find_all_directories(mydir)
-    print(dirdict.items())
+    dirdict = make_json_spec('JPsiCC', 'DATA_bkg_names.json', ['kraken', '202405'], 2018, 'DATA_BKG')
     json_str = make_json(dirdict)
     print(json_str)
