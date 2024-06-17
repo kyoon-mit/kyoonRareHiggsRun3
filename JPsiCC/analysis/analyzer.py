@@ -6,7 +6,8 @@ JPsiCC analysis-specific analyzer
 '''
 
 from kytools import jsonreader
-from rdfdefines import rdf_def_weights, rdf_def_generic
+from datetime import date
+import rdfdefines
 import os, json
 import ROOT
 
@@ -14,35 +15,43 @@ import ROOT
 ROOT.DisableImplicitMT()
 
 class JPsiCCAnalyzer:
-    '''JPsi analyzer.
+    '''JPsiCC analyzer.
 
     Args:
-        DATA (bool): Whether to use DATA
+        SAMP (str): Either one of the following three options.
+            'DATA_BKG', 'MC_BKG', 'MC_SIG'
         YEAR (int): Year of data-taking. Provide any number if using MC.
-        VERSION (str): Version of the files.
-        LUMI (float): Luminosity
+        VERS (str): Version of the files.
+        CAT (str): Category of the analysis.
+    
+    Raises:
+        ValueError: If the string provided for SAMP is not among the three options.
+        TypeError: If the value provided for YEAR is not an integer.
+        TypeError: If the value provided for VERS is not a string.
+        TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, DATA, YEAR, VERSION, LUMI, CAT):
-        self._DATA = DATA
-        self._YEAR = YEAR
-        self._VERSION = VERSION
-        self._LUMI = LUMI
-        self._CAT = CAT
+    def __init__(self, SAMP, YEAR, VERS, CAT):
+        match SAMP:
+            case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
+            case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
+            case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
+            case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
+        if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
+        if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
+        if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
+        self._SAMPLE, self._YEAR, self._VERSION, self._CAT = SAMP, YEAR, VERS, CAT
+
+        self._branches = []   # TBranches to take RDF snapshot of
+        self._rdf = None      # Placeholder for RDF
+        self._hists = dict()  # Dictionary of histogram objects
+        self._models = dict() # Dictionary of histogram models
+
+        today = date.today()
+        self._date = f'{today.year}{today.month}{today.day}'
         self._anpath = 'JPsiCC'
-        self._savedir = '.'
-        self._chainBKG = None
-        self._chainSIG = None
-        self._rdfBKG = None
-        self._rdfSIG = None
-        self._sfxBKG = ''
-        self._sfxCOMB = ''
-        if self._DATA:
-            self._sfxBKG = f'BKG_DATA_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
-            self._sfxCOMB = f'COMB_DATA_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
-        else:
-            self._sfxBKG = f'BKG_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
-            self._sfxCOMB = f'COMB_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
-        self._sfxSIG = f'SIG_MC_{self._YEAR}_lumi{self._LUMI}_{self._CAT}_{self._VERSION}'
+        self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', self._VERSION, CAT)
+        self._sfx = f'{SAMP}_{self._YEAR}_{self._CAT}_{self._VERSION}'
+
         # Color scheme: http://arxiv.org/pdf/2107.02270
         self._orange = ROOT.kOrange + 1
         self._blue = ROOT.kAzure - 4
@@ -51,199 +60,201 @@ class JPsiCCAnalyzer:
         self._gray = ROOT.kGray + 1
         self._violet = ROOT.kViolet + 2
 
-
-    def __getfilesBKG(self, treename, xrtd_proxy):
-        '''Internal method.
-        '''
-        if self._DATA:
-            meta_json_name = 'data_names.json'
-        else:
-            meta_json_name = 'MC_bkg_names.json'
-        meta_info = jsonreader.get_object_from_json(self._anpath, meta_json_name, ['kraken', self._VERSION, self._YEAR])
-        chain = ROOT.TChain(treename)
-        for info in meta_info:
-            events = jsonreader.get_chain_from_json_xrtd(anpath=self._anpath,
-                                                         jsonname='NANOAOD.json',
-                                                         keys=['kraken', self._VERSION, info['dataset']],
-                                                         treename=treename,
-                                                         xrtd_proxy=xrtd_proxy)
-            chain.Add(events)
-        return chain
+        self._draw_option = 'P' if self._DATA else 'HIST'
     
-    def __getfilesSIG(self, treename):
-        '''Internal method.
-        '''
-        chain = ROOT.TChain(treename)
-        events = jsonreader.get_chain_from_json(anpath=self._anpath,
-                                                jsonname='NANOAOD.json',
-                                                keys=['mariadlf', '202405', 'GEN-signal'],
-                                                treename=treename)
-        chain.Add(events)
-        return chain
-    
-    def __createWeightedRDF(self, treename, nanoaodjson_key, dataset, xsec, xsec_sigma, xrtd_proxy=''):
-        '''Internal method.
-
-        Open a dataset and load it onto a RDF with proper weights.
-        Each dataset will have different cross sections, and this is the base-level
-        method to load a dataset with a single cross section.
+    def __draw_hist(self, histo1d, model1d, draw_option='HIST'):
+        '''Internal method for drawing histogram.
 
         Args:
-            treename (str): Name of the TTree in the target ROOT files.
-            nanoaodjson_key (str): Top-level key in the NANOAOD.json.
-                e.g. 'mariadlf', 'kraken', etc.
-            dataset (str): Name of the dataset.
-                For gen-level signal, provide 'GEN-signal.'
-            xsec (float): The cross section of this dataset.
-            xsec_sigma (float): The uncertainty on the cross section.
-            xrtd_proxy (str, optional): If provided, it will open a remote file with the proxy.
-                Otherwise, it will open a local file.
-                Defaults to ''.
-        '''
-        filenames = jsonreader.get_filenames_from_json(anpath=self._anpath,
-                                                       jsonname='NANOAOD.json',
-                                                       keys=[nanoaodjson_key, self._VERSION, dataset],
-                                                       xrtd_proxy=xrtd_proxy)
-        rdf = ROOT.RDataFrame(treename, filenames)
-        rdf = rdf_def_weights(rdf=rdf, lumi=self._LUMI, data=self._DATA, xsec=xsec, xsec_sigma=xsec_sigma)
-        return rdf
+            histo1d (ROOT.TH1D): Histogram object.
+            model1d (tuple(str)): Tuple of the histogram description.
+                (name, title, nbins, xmin, xmax)
+            draw_option (str, optional): Draw option to pass to TH1D.Draw() method.
+                Defaults to 'HIST'.
 
-    def __draw_hist(self, hist, model1d, draw_option='HIST'):
-        '''Internal method.
+        Returns:
+            c (ROOT.TCanvas): ROOT.TCanvas object containing the histogram.
         '''
         c = ROOT.TCanvas()
         bin_width = (model1d[4]-model1d[3])/model1d[2]
-        hist.Draw(draw_option)
-        hist.SetTitle(model1d[1])
-        hist.GetXaxis().SetTitle(model1d[1])
-        hist.GetYaxis().SetTitle(f'Events / {bin_width:.3g}')
+        histo1d.Draw(draw_option)
+        histo1d.SetTitle(model1d[1])
+        histo1d.GetXaxis().SetTitle(model1d[1])
+        histo1d.GetYaxis().SetTitle(f'Events / {bin_width:.3g}')
         c.Update()
         return c
 
-    def getfilesBKG(self, treename, xrtd_proxy):
-        '''Retrieve files.
+    def __set_hist_style(self, histo1d, SAMP):
+        '''Internal method for setting the histogram style.
 
         Args:
-            treename (str): Name of the TTree.
-            xrtd_proxy (str): Name of the XRootD proxy.
+            histo1d (ROOT.TH1D): The histogram.
+            SAMP (str):  Either one of the following three options.
+                'DATA_BKG', 'MC_BKG', 'MC_SIG'.
 
         Returns:
-            (None)
+            histo1d (ROOT.TH1D): The histogram.
         '''
-        self._chainBKG = self.__getfilesBKG(treename, xrtd_proxy)
+        match SAMP:
+            case 'DATA_BKG':
+                histo1d.SetMarkerStyle(ROOT.kFullSquare)
+                histo1d.SetMarkerSize(0.5)
+            case 'MC_BKG':
+                histo1d.SetFillColorAlpha(self._orange, 0.6)
+                histo1d.SetLineColorAlpha(ROOT.kBlack, 1.0)
+            case 'MC_SIG':
+                histo1d.SetFillColorAlpha(self._blue, 0.6)
+                histo1d.SetLineColorAlpha(ROOT.kBlack, 1.0)
+        return histo1d
 
-    def getfilesSIG(self, treename):
-        '''Retrieve files.
+    def __plot_hists(self, hist_dict, scaleSIG=1.):
+        '''Internal method to plot histograms.
 
         Args:
-            treename (str): Name of the TTree.
-
-        Returns:
-            (None)
-        '''
-        self._chainSIG = self.__getfilesSIG(treename)
-
-    def getfiles_local(self, treename, filenames, signal=True):
-        '''Retrieve files locally.
-
-        Args:
-            treename (str): Name of the TTree.
-            filenames (list(str)): Names of the files.
-            signal (bool): Whether to retrieve signal files.
-                Defaults to True.
-
-        Returns:
-            (None)
-        '''
-        chain = ROOT.TChain(treename)
-        for name in filenames:
-            chain.Add(name)
-        if signal: self._chainSIG = chain
-        else: self._chainBKG = chain
-
-    def doBKG(self):
-        '''Do the background analysis.
-
-        Returns:
-           (None)
-        '''
-        if self._chainBKG is None:
-            raise Exception("First open the files using one of the \'gefiles\' methods.")
-        rdf = ROOT.RDataFrame(self._chainBKG)
-        self._rdfBKG = rdf_def_generic(rdf, self._LUMI, self._DATA)
-
-    def doSIG(self):
-        '''Do the signal analysis.
-
-        Args:
-            scale (float): Scale the signal by this factor.
-
-        Returns:
-           (None)
-        '''
-        if self._chainSIG is None:
-            raise Exception("First open the files using one of the \'getfiles\' methods.")
-        rdf = ROOT.RDataFrame(self._chainSIG)
-        self._rdfSIG = rdf_def_generic(rdf, self._LUMI, data=False)
-
-    def snapshot(self, branches, outname, signal=True):
-        '''Create snapshot of the RDF.
-
-        Args:
-            branches (list(str)): Name of the branches to create a snapshot.
-            outname (str): Name of the output file.
-            signal (bool): Whether to retrieve signal files.
-                Defaults to True.
-
-        Returns:
-            (None)
-        '''
-        pass
-    
-    def makehists(self, scaleSIG=1.):
-        '''Make histograms.
-
-        Args:
+            hist_dict (dict): Dictionary of histogram definitions.
             scaleSIG (float): Scale factor for the signal histogram.
 
         Returns:
             (None)
         '''
-        if self._rdfBKG is None:
-            raise Exception("First run \'doBKG\'.")
-        hlist_BKG, hlist_SIG = dict(), dict()
+        for key, hdef in hist_dict.items():
+            # Create Histo1D
+            hname = f'{hdef["name"]}_{self._SAMPLE}_{self._YEAR}_{self._CAT}'
+            model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
+            histo1d = self._rdf.Histo1D(model1d, hdef['name'], 'w')
+            # Set color
+            histo1d = self.__set_hist_style(histo1d, self._SAMPLE)
+            if self._MODE=='SIG': histo1d.Scale(scaleSIG)
+            # Save histogram
+            histo1d.SetDirectory(0)
+            self._hists[key] = histo1d
+            self._models[key] = model1d
+            # Draw histogram
+            c = self.__draw_hist(histo1d=histo1d, model1d=model1d, draw_option=self._draw_option)
+            c.SaveAs(os.path.join(self._plotsavedir, f'{hname}.png'))
+        return
+    
+    def createWeightedRDF(self, run_spec_json, event_spec_json):
+
+        '''Open a sample using JSON spec and load it onto a RDF with proper weights.
+
+        Args:
+            run_spec_json (str): Name of the JSON file for the "Runs" tree.
+            event_spec_json (str): Name of the JSON file for the "Events" tree.
+            data (bool, optional): Whether to use data.
+
+        Returns:
+            (None)
+        '''
+        rdf_runs = jsonreader.get_rdf_from_json_spec(self._anpath, run_spec_json)
+        rdf_events = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
+        rdf_runs = rdfdefines.rdf_def_sample_meta(rdf_runs)
+        rdf_events = rdfdefines.rdf_def_sample_meta(rdf_events)
+        if self._DATA: sum_weights = 1.
+        else: sum_weights = rdfdefines.compute_sum_weights(rdf_runs)[0]
+        self._rdf = rdfdefines.rdf_def_weights(rdf_events, sum_weights, data=self._DATA)
+        return
+
+    def defineColumnsRDF(self):
+        '''Define columns for the internal RDF.
+
+        The columns will be different depending on the category.
+
+        Args:
+            rdf (ROOT.RDataFrame): Input ROOT.RDataFrame.
+
+        Returns:
+            (None)
+        '''
+        match self._CAT:
+            case 'GF':
+                new_rdf, branchlist = rdfdefines.rdf_def_jpsi(self._rdf)
+                self._branches += branchlist
+            case _:
+                new_rdf = self._rdf
+        self._rdf = new_rdf
+        return
+
+    def retrieveRDF(self):
+        '''Retrieve the internal RDF.
+
+        Returns:
+            rdf (ROOT.RDataFrame): The retrieved RDF.
+        '''
+        return self._rdf
+
+    def snapshotRDF(self):
+        '''Create a snapshot of the RDF.
+
+        Outputs a file whose name is printed in the terminal.
+
+        Returns:
+            (None)
+        '''
+        fname = f'snapshot_{self._sfx}.root'
+        self._rdf.Snapshot('Events', fname, self._branches)
+        print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
+        return
+
+    def makeHistos(self):
+        '''Make histograms from the internal RDF.
+
+        Outputs histograms in the 'plots' directory.
+
+        Returns:
+            (None)
+        '''
         hist_defs = jsonreader.get_object_from_json(anpath='JPsiCC',
                                                     jsonname='rdf_hists.json',
                                                     keys=['NANOAOD_to_RDF'])
-        savedir = os.path.join(os.environ['HRARE_DIR'], 'JPsiCC', 'plots', self._savedir)
-        if not os.path.exists(savedir): os.makedirs(savedir)
-        for key, hdef in hist_defs['test'].items():
-            # Create Histo1D
-            model1d = (f'{hdef["name"]}_{self._YEAR}', hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
-            hbkg = self._rdfBKG.Histo1D(model1d, hdef['name'], 'w')
-            hsig = self._rdfSIG.Histo1D(model1d, hdef['name'], 'w')
+        if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
+        match self._CAT:
+            case 'GF':
+                self.__plot_hists(hist_defs['Jpsi'])
+                # self.__plot_hists(hist_defs['jet'])
+            case _: pass
+        return
+    
+    def retrieveHisto(self, key):
+        '''Retrieve a histogram object using a key.
 
-            # Set color
-            hbkg.SetFillColorAlpha(self._orange, 0.6)
-            hsig.SetFillColorAlpha(self._blue, 0.6)
+        Args:
+            key (str): The key to the histogram.
 
-            # Scale signal
-            hsig.Scale(scaleSIG)
+        Returns:
+            histo1d (ROOT.TH1D)/(None): Histogram object if key exists. Otherwise,
+                returns NoneType.
+        '''
+        if key in self._hists:
+            return self._hists[key]
+        return 
 
-            # Create THStack
-            hs = ROOT.THStack()
-            hs.Add(hbkg.GetPtr())
-            hs.Add(hsig.GetPtr())
+    def stackHistos(self, analyzer):
+        '''Stack and plot histograms.
 
-            # Draw histograms
-            c_bkg = self.__draw_hist(hbkg, model1d)
-            c_sig = self.__draw_hist(hsig, model1d)
-            c_hstack = self.__draw_hist(hs, model1d, draw_option='HIST NOSTACK')
+        Args:
+            analyzer (JPsiCCAnalyzer): another analyzer object.
 
-            # Save TCanvas
-            c_bkg.SaveAs(os.path.join(savedir, f'{key}_{self._sfxBKG}.png'))
-            c_sig.SaveAs(os.path.join(savedir, f'{key}_{self._sfxSIG}.png'))
-            c_hstack.SaveAs(os.path.join(savedir, f'{key}_stack_{self._sfxCOMB}.png'))
+        Returns:
+            (None)
+        '''
+        this_SAMPLE, other_SAMPLE = self._SAMPLE, analyzer._SAMPLE
+        for key, item in self._hists.items():
+            other_hist = analyzer.retrieveHisto(key)
+            if other_hist is not None:
+                this_hist = self.__set_hist_style(item, this_SAMPLE)
+                other_hist = self.__set_hist_style(other_hist, other_SAMPLE)
+                # Create THStack
+                hs = ROOT.THStack()
+                hs.Add(this_hist.GetPtr(), self._draw_option)
+                hs.Add(other_hist.GetPtr(), analyzer._draw_option)
+                # Draw histograms
+                model = self._models[key]
+                c_hstack = self.__draw_hist(hs, model, draw_option='HIST NOSTACK')
+                # Save TCanvas
+                sfx = 'STACK_' + self._sfx.lstrip(f'{self._SAMPLE}_')
+                c_hstack.SaveAs(os.path.join(self._plotsavedir, f'{key}_{sfx}.png'))
+        return
     
 # Draw
 # save_dir = os.path.join(os.environ['HRARE_DIR'], 'JPsiCC', 'plots', 'jetstudies', 'control')
@@ -254,10 +265,16 @@ class JPsiCCAnalyzer:
 #     c.Close()
 
 if __name__=='__main__':
-    analyzer = JPsiCCAnalyzer(DATA=False, YEAR=2018, VERSION='test', LUMI=100, CAT='generic')
-    # analyzer.getfiles('Events', 'root://bost-cms-xcache01.lhcone.es.net:1094//') # xcache server down
-    analyzer.getfilesBKG('Events', 'root://xrootd.cmsaf.mit.edu//')
-    analyzer.getfilesSIG('Events')
-    analyzer.doBKG()
-    analyzer.doSIG()
-    analyzer.makehists(scaleSIG=10e4)
+    mcbkg = JPsiCCAnalyzer('MC_BKG', 2018, '202405', 'GF')
+    mcbkg.createWeightedRDF('run_spec_mc_bkg_test.json', 'event_spec_mc_bkg_test.json')
+    mcbkg.defineColumnsRDF()
+    mcbkg.snapshotRDF()
+    mcbkg.makeHistos()
+
+    databkg = JPsiCCAnalyzer('DATA_BKG', 2018, '202405', 'GF')
+    databkg.createWeightedRDF('run_spec_data_bkg_test.json', 'event_spec_data_bkg_test.json')
+    databkg.defineColumnsRDF()
+    databkg.snapshotRDF()
+    databkg.makeHistos()
+
+    mcbkg.stackHistos(databkg)
