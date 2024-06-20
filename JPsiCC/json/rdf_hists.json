@@ -1,17 +1,19 @@
 {
     "NANOAOD_to_RDF":
     {
-        "JPsi":
+        "Jpsi":
         {
-            "Jpsi_kin_mass": {"name": "Jpsi_kin_mass", "title": "Jpsi mass;m_{mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 90, "xmin": 1.5, "xmax": 4.5},
-            "Jpsi_kin_pt": {"name": "Jpsi_kin_pt", "title": "Jpsi p_{T};p_{T} {mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},        
-            "Jpsi_muon1_pt": {"name": "Jpsi_muon1_pt", "title": "p_{T}(mu);p_{T}(mu) (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "Jpsi_muon2_pt": {"name": "Jpsi_muon2_pt", "title": "p_{T}(mu);p_{T}(mu)  (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "Jpsi_kin_eta": {"name": "Jpsi_kin_eta", "title": "Jpsi eta;eta_{mu^{+}mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": -5.0, "xmax": 5.0},
+            "Jpsi_kin_mass": {"name": "Jpsi_kin_mass", "title": "Jpsi mass;m_{#mu^{+}#mu^{-}} (GeV);N_{Events}", "bin": 90, "xmin": 1.5, "xmax": 4.5},
+            "Jpsi_kin_pt": {"name": "Jpsi_kin_pt", "title": "Jpsi p_{T};p_{T} {#mu^{+}#mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},        
+            "Jpsi_muon1_pt": {"name": "Jpsi_muon1_pt", "title": "p_{T}(#mu);p_{T}(#mu) (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "Jpsi_muon2_pt": {"name": "Jpsi_muon2_pt", "title": "p_{T}(#mu);p_{T}(#mu)  (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "Jpsi_kin_eta": {"name": "Jpsi_kin_eta", "title": "Jpsi eta;eta_{#mu^{+}#mu^{-}} (GeV);N_{Events}", "bin": 100, "xmin": -5.0, "xmax": 5.0},
             "Jpsi_iso": {"name": "Jpsi_iso", "title": "Jpsi isolation;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "Jpsi_isoPho": {"name": "Jpsi_isoPho", "title": "Jpsi isolation;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "Jpsi_isoNeuHad": {"name": "Jpsi_isoNeuHad", "title": "Jpsi neutral hadron isolation;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "Jpsi_kin_lxy": {"name": "Jpsi_kin_lxy", "title": "Jpsi kin_lxy;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "Jpsi_kin_sipPV": {"name": "Jpsi_kin_sipPV", "title": "Jpsi kin_sipPV;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 5.0},
+            "Jpsi_doca": {"name": "Jpsi_doca", "title": "Jpsi doca;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 0.05},
             "Jpsi_muon1_isTighMuon": {"name": "Jpsi_muon1_isTighMuon", "title": "Jpsi muon1_isTighMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
             "Jpsi_muon1_isMediumMuon": {"name": "Jpsi_muon1_isMediumMuon", "title": "Jpsi muon1_isMediumMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
             "Jpsi_muon2_isTighMuon": {"name": "Jpsi_muon2_isTighMuon", "title": "Jpsi muon2_isTighMuon;N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
@@ -25,9 +27,12 @@
             "Jpsi_leadingCharged2dSignMaxPt2": {"name": "Jpsi_leadingCharged2dSignMaxPt2", "title": "Jpsi 2dSignMaxPt1 subLeadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
             "Jpsi_leadingCharged3dSignMaxPt2": {"name": "Jpsi_leadingCharged3dSignMaxPt2", "title": "Jpsi 3dSignMaxPt1 subLeadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
             "Jpsi_leadingChargedDxyMaxPt2": {"name": "Jpsi_leadingChargedDxyMaxPt2", "title": "Jpsi Dxy subLeadingCharged within ConedR04; d_{xy}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
-            "Jpsi_leadingChargedDzMaxPt2": {"name": "Jpsi_leadingChargedDzMaxPt2", "title": "Jpsi Dz subLeadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1}
+            "Jpsi_leadingChargedDzMaxPt2": {"name": "Jpsi_leadingChargedDzMaxPt2", "title": "Jpsi Dz subLeadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
+            "nJpsi": {"name": "nJpsi", "title": "nJpsi", "bin": 5, "xmin": 0.0, "xmax": 5.0}
         },
-        "Jet":
+        "muons":
+        {},
+        "jet":
         {
             "jet1Pt": {"name": "jet1Pt", "title": "Leading Jet p_{T}; AK4 jet p_{T}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "jet2Pt": {"name": "jet2Pt", "title": "Subleading Jet p_{T}; AK4 jet p_{T}} (GeV);N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
