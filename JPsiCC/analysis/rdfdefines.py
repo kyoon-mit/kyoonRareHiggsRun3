@@ -43,20 +43,21 @@ def get_rdf_branches(key):
         branchlist.append(hdef['name'])
     return branchlist
 
-def compute_sum_weights(rdf_runs):
+def compute_sum_weights(rdf_runs, sample_name):
     '''Compute the weights.
 
     Only works if the RDF has columns named 'genEventSumw' and 'genEventCount'.
 
     Args:
         rdf_runs (ROOT.RDataFrame): ROOT.RDataFrame object created from the 'Runs' tree.
+        sample_name (str): Name of the sample.
 
     Returns:
         gen_event_sumw (float): Sum of 'genEventSumw' column values.
         gen_event_count (float): Sum of 'genEventCount' column values.
     '''
-    gen_event_sumw = rdf_runs.Sum('genEventSumw').GetValue()
-    gen_event_count = rdf_runs.Sum('genEventCount').GetValue()
+    gen_event_sumw = rdf_runs.Filter(f'sample=="{sample_name}"').Sum('genEventSumw').GetValue()
+    gen_event_count = rdf_runs.Filter(f'sample=="{sample_name}"').Sum('genEventCount').GetValue()
     if not gen_event_count == gen_event_sumw:
         print('WARNING in compute_sum_weights:\ngen_event_sumw not equal to gen_events_count')
         print(f'gen_event_sumw: {gen_event_sumw}, gen_event_count: {gen_event_count}')
@@ -81,10 +82,12 @@ def rdf_def_sample_meta(rdf_events):
     branches = ['sample', 'sample_category', 'xsec', 'lumi']
     return new_rdf, branches
 
-def rdf_def_weights(rdf_events, sum_weights, data=False):
+def rdf_def_weights(rdf_runs, rdf_events, data=False):
     '''RDF define a column with weights.
 
     Args:
+        rdf_runs (ROOT.RDataFrame): ROOT.RDataFrame object created from the 'Runs' tree.
+            Only works if the RDF has columns named 'genEventSumw' and 'genEventCount'.
         rdf_events (ROOT.RDataFrame): The ROOT.RDataFrame object created from the 'Events' tree.
         dict_sum_weights (float): Sum of weights (computed from compute_sum_weights).
         data (bool, optional): Whether the provided RDF is data.
@@ -94,12 +97,32 @@ def rdf_def_weights(rdf_events, sum_weights, data=False):
         new_rdf (ROOT.RDataFrame): Modified RDataFrame.
         branches (list(str)): List of TBranches pertinent to the definitions.
     '''
-    if not data: weight_exp = 'xsec*genWeight*lumi/sum_weights'
-    else: weight_exp = '1.0'
-    new_rdf = (rdf_events.Define('sum_weights', f'{sum_weights}')
+    if not data:
+        sample_col =rdf_events.Take['string']('sample')
+        sample_names = list(set(sample_col.GetValue()))
+        list_sum_weights = []
+        for sname in sample_names:
+            list_sum_weights.append((sname, compute_sum_weights(rdf_runs, sname)))
+        func_sum_weights = 'float func_sum_weights(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {\n'
+        max_idx = len(list_sum_weights)
+        for idx in range(max_idx):
+            item = list_sum_weights[idx]
+            if idx == 0:
+                func_sum_weights += f'  if (id.Contains("{item[0]}")) {{return {item[1][0]};}}\n'
+            else:
+                func_sum_weights += f'  else if (id.Contains("{item[0]}")) {{return {item[1][0]};}}\n'
+        func_sum_weights += f'  else {{return 1.;}}\n}}'
+        print (func_sum_weights)
+        weight_exp = 'xsec*genWeight*lumi/sum_weights'
+    else:
+        weight_exp = '1.0'
+        func_sum_weights = 'float func_sum_weights(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {return 1.;}'
+    ROOT.gInterpreter.Declare(func_sum_weights)
+    new_rdf = (rdf_events.DefinePerSample('sum_weights', 'func_sum_weights(rdfslot_, rdfsampleinfo_)')
                          .Define('w', weight_exp)
     )
     branches = ['sum_weights', 'w']
+    if not data: branches.append('genWeight')
     return new_rdf, branches
 
 def rdf_filter_triggers(rdf, CAT, YEAR):
@@ -120,8 +143,9 @@ def rdf_filter_triggers(rdf, CAT, YEAR):
     '''
     match f'{CAT}_{YEAR}':
         case 'GF_2018':
-            #trigger = '(HLT_Dimuon20_Jpsi_Barrel_Seagulls || HLT_Dimuon25_Jpsi)'
-            trigger = '(HLT_Dimuon25_Jpsi)'
+            trigger = '(HLT_Dimuon20_Jpsi_Barrel_Seagulls || HLT_Dimuon25_Jpsi)'
+            #trigger = '(HLT_Dimuon25_Jpsi)'
+            print(f'The following triggers are applied: {trigger}')
         case _:
             raise ValueError(f'Trigger does not exist for the combination of {CAT} and {YEAR}.')
     try: new_rdf = rdf.Define('trigger', trigger)
@@ -156,6 +180,21 @@ def rdf_def_muons(rdf):
     '''
     new_rdf = rdf
     branches = get_rdf_branches('muon')
+    return new_rdf, branches
+
+def rdf_def_vertex(rdf):
+    '''Vertex RDF definition.
+
+    Args:
+        rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+
+    Returns:
+        new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
+    '''
+    new_rdf = rdf
+    branches = get_rdf_branches('vertex')
+    new_rdf = (rdf.Filter('PV_npvsGood>0', 'Number of PVs must be at least 1.')
+                  )
     return new_rdf, branches
 
 def rdf_def_jets(rdf, CAT, YEAR):

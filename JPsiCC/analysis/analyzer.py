@@ -35,6 +35,7 @@ class JPsiCCAnalyzer:
     def __init__(self, SAMP, YEAR, VERS, CAT, weights=True):
         match SAMP:
             case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
+            case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG3': self._DATA, self._MODE = False, 'BKG'
@@ -56,7 +57,7 @@ class JPsiCCAnalyzer:
         today = date.today()
         self._date = f'{today.year}{today.month:02}{today.day:02}'
         self._anpath = 'JPsiCC'
-        self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self._VERSION}', CAT)
+        self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self._VERSION}', self._date, CAT)
         self._sfx = f'{SAMP}_{self._YEAR}_{self._CAT}_v{self._VERSION}_{self._date}'
         if not weights: self._sfx += '_NOWEIGHT'
 
@@ -108,6 +109,9 @@ class JPsiCCAnalyzer:
             case 'DATA_BKG':
                 histo1d.SetMarkerStyle(ROOT.kFullSquare)
                 histo1d.SetMarkerSize(0.5)
+            case 'MC_BKG':
+                histo1d.SetFillColorAlpha(ROOT.kWhite, 1.0)
+                histo1d.SetLineColorAlpha(ROOT.kBlack, 1.0)
             case 'MC_BKG1':
                 histo1d.SetFillColorAlpha(self._gray, 0.6)
                 histo1d.SetLineColorAlpha(ROOT.kBlack, 1.0)
@@ -124,6 +128,8 @@ class JPsiCCAnalyzer:
                 histo1d.SetFillColorAlpha(ROOT.kWhite, 0.0)
                 histo1d.SetLineColorAlpha(self._blue, 1.0)
                 histo1d.SetLineWidth(2)
+            case _:
+                raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d
 
     def __plot_hists(self, hist_dict, draw=True, scaleSIG=1.):
@@ -145,7 +151,7 @@ class JPsiCCAnalyzer:
             # if counter > 1:
             #     break
             # Create Histo1D
-            hname = f'{hdef["name"]}_{self._SAMPLE}_{self._YEAR}_{self._CAT}_{self._VERSION}'
+            hname = f'{hdef["name"]}_{self._sfx}'
             model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
             if self._weights: histo1d = self._rdf.Histo1D(model1d, hdef['name'], 'w')
             else: histo1d = self._rdf.Histo1D(model1d, hdef['name'])
@@ -201,9 +207,9 @@ class JPsiCCAnalyzer:
         rdf_events = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
         rdf_runs, _ = rdfdefines.rdf_def_sample_meta(rdf_runs)
         rdf_events, br1 = rdfdefines.rdf_def_sample_meta(rdf_events)
-        if self._DATA: sum_weights = 1.
-        else: sum_weights = rdfdefines.compute_sum_weights(rdf_runs)
-        self._rdf, br2 = rdfdefines.rdf_def_weights(rdf_events, sum_weights, data=self._DATA)
+        # if self._DATA: sum_weights = 1.
+        # else: sum_weights = rdfdefines.compute_sum_weights(rdf_runs)
+        self._rdf, br2 = rdfdefines.rdf_def_weights(rdf_runs, rdf_events, data=self._DATA)
         self._branches = self._branches + br1 + br2
         return
 
@@ -223,11 +229,12 @@ class JPsiCCAnalyzer:
                 new_rdf, br1 = rdfdefines.rdf_filter_triggers(self._rdf, self._CAT, self._YEAR)
                 new_rdf, br2 = rdfdefines.rdf_def_jpsi(new_rdf)
                 new_rdf, br3 = rdfdefines.rdf_def_muons(new_rdf)
+                new_rdf, br4 = rdfdefines.rdf_def_vertex(new_rdf)
                 # new_rdf, br4 = rdfdefines.rdf_def_jets(new_rdf, self._CAT, self._YEAR)
                 if self._SAMPLE=='MC_SIG':
                     new_rdf, br_gen = rdfdefines.rdf_def_genpart(new_rdf)
                     self._branches += br_gen
-                self._branches = self._branches + br1 + br2 + br3 #+ br4
+                self._branches = self._branches + br1 + br2 + br3 + br4
             case _:
                 new_rdf = self._rdf
         self._rdf = new_rdf
@@ -245,6 +252,8 @@ class JPsiCCAnalyzer:
         '''
         self._rdf = (self._rdf.Filter(f'sample=="{sample_name}"'))
         self._SAMPLENAME += f':{sample_name[:10]}'
+        sum_weights = self._rdf.Sum('w').GetValue()
+        print(f'Sum of weights for {sample_name}: {sum_weights:.6f}')
         return
 
     def retrieveRDF(self):
@@ -313,6 +322,8 @@ class JPsiCCAnalyzer:
         match self._CAT:
             case 'GF':
                 hist_dict.update(hist_defs['Jpsi'])
+                hist_dict.update(hist_defs['muon'])
+                hist_dict.update(hist_defs['vertex'])
                 if genplots: hist_dict.update(hist_defs['gen'])
                 # self.__plot_hists(hist_defs['jet'])
             case _: pass
@@ -381,14 +392,14 @@ class JPsiCCAnalyzer:
             an.makeHistos(plot=True, draw=draw_indiv)
         sig_analyzer.makeHistos(plot=True, draw=draw_indiv)
 
-        # Set legend
-        legend = ROOT.TLegend(0.65, 0.7, 0.95, 0.90)
-        legend.SetBorderSize(1)
-        legend.SetFillColorAlpha(ROOT.kWhite, 0.8)
-        legend.SetTextSize(0.024)
-        legend.SetMargin(0.2)
-
         for key, hdef in hist_dict.items():
+            # Set legend
+            legend = ROOT.TLegend(0.64, 0.68, 0.95, 0.88)
+            legend.SetBorderSize(1)
+            legend.SetFillColorAlpha(ROOT.kWhite, 0.8)
+            legend.SetTextSize(0.024)
+            legend.SetMargin(0.2)
+            
             if spec_key != '':
                 if not spec_key == key: continue
             # Create THStack
@@ -413,17 +424,16 @@ class JPsiCCAnalyzer:
             hs.Draw()
 
             # Draw data
-            data_hist.Scale(mc_bkg_norm/data_hist.Integral())
             data_hist.Draw('P SAME')
-            legend.AddEntry(data_hist.GetPtr(), 'DATABKG normed to #Sigma(MCBKG)', 'P')
+            legend.AddEntry(data_hist.GetPtr(), 'DATABKG', 'P')
 
             # Draw signal
             sig_hist = sig_analyzer.retrieveHisto(key)
             if sig_hist is None: continue
-            sig_hist.Scale(mc_bkg_norm/sig_hist.Integral()) # scale sig hist
+            sig_hist.Scale(data_hist.Integral()/sig_hist.Integral()) # scale sig hist
             sig_hist = self.__set_hist_style(sig_hist, sig_analyzer._SAMPLE)
             sig_hist.Draw('HIST SAME')
-            legend.AddEntry(sig_hist.GetPtr(), 'MCSIG normed to #Sigma(MCBKG)', 'L')
+            legend.AddEntry(sig_hist.GetPtr(), 'MCSIG', 'L')
             
             # Draw histograms
             hist_max_vals = [mc_bkg_max, data_hist.GetMaximum(), sig_hist.GetMaximum()]
@@ -441,17 +451,20 @@ class JPsiCCAnalyzer:
             # Save TCanvas
             sfx = 'MULTI_STACK_' + self._sfx.lstrip(f'{self._SAMPLE}_')
             c_hstack.SaveAs(os.path.join(self._plotsavedir, f'{key}_{sfx}.png'))
+
+            # Print integrals
+            print(f'MCBKG integral: {mc_bkg_norm}, DATABKG integral: {data_hist.Integral()}')
         return
     
 if __name__=='__main__':
-    print('Choose preset (mcbkg, databkg, mcsig, gen, allplots, noweight): ', end='')
+    print('Choose preset (mcbkg, databkg, mcsig, allsnap, gen, allplots, noweight): ', end='')
     preset = input()
     match preset:
         case 'mcbkg':
-            mcbkg1 = JPsiCCAnalyzer('MC_BKG1', 2018, '202406', 'GF')
-            mcbkg1.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
-            mcbkg1.defineColumnsRDF()
-            mcbkg1.snapshotRDF()
+            mcbkg = JPsiCCAnalyzer('MC_BKG', 2018, '202406', 'GF')
+            mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
+            mcbkg.defineColumnsRDF()
+            mcbkg.snapshotRDF()
 
         case 'databkg':
             databkg = JPsiCCAnalyzer('DATA_BKG', 2018, '202406', 'GF')
@@ -464,6 +477,22 @@ if __name__=='__main__':
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
+        
+        case 'allsnap':
+            mcbkg = JPsiCCAnalyzer('MC_BKG', 2018, '202406', 'GF')
+            mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
+            mcbkg.defineColumnsRDF()
+            mcbkg.snapshotRDF()
+            
+            databkg = JPsiCCAnalyzer('DATA_BKG', 2018, '202406', 'GF')
+            databkg.createDataRDF('event_spec_data_bkg_skim.json')
+            databkg.defineColumnsRDF()
+            databkg.snapshotRDF()
+            
+            mcsig = JPsiCCAnalyzer('MC_SIG', 2018, '202406', 'GF')
+            mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
+            mcsig.defineColumnsRDF()
+            mcsig.snapshotRDF()
 
         case 'gen':
             mcsig = JPsiCCAnalyzer('MC_SIG', 2018, '202406', 'GF')
@@ -471,21 +500,21 @@ if __name__=='__main__':
             mcsig.makeHistos(genplots=True)
 
         case 'allplots' | 'noweight':
-            use_weight = True
-            if preset=='noweight': use_weight = False
+            use_weight, draw_indiv = True, True
+            if preset=='noweight': use_weight, draw_indiv = False, False
 
             mcbkg1 = JPsiCCAnalyzer('MC_BKG1', 2018, '202406', 'GF', weights=use_weight)
-            mcbkg1.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240628.root')
+            mcbkg1.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240709.root')
             mcbkg1.selectSampleRDF('BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
 
             mcbkg3 = JPsiCCAnalyzer('MC_BKG3', 2018, '202406', 'GF', weights=use_weight)
-            mcbkg3.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240628.root')
+            mcbkg3.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240709.root')
             mcbkg3.selectSampleRDF('JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
 
             databkg = JPsiCCAnalyzer('DATA_BKG', 2018, '202406', 'GF', weights=use_weight)
-            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202405_20240628.root')
+            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202406_20240709.root')
 
             mcsig = JPsiCCAnalyzer('MC_SIG', 2018, '202406', 'GF', weights=use_weight)
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240628.root')
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240709.root')
 
-            mcbkg1.stackMultiHistos([mcbkg1, mcbkg3, databkg], mcsig, draw_indiv=True)
+            mcbkg1.stackMultiHistos([mcbkg1, mcbkg3, databkg], mcsig, draw_indiv=draw_indiv)
