@@ -7,9 +7,6 @@ Library of definitions that contain analysis category-specific RDF defines and f
 from kytools import jsonreader
 import ROOT, os
 
-# Disable multithreading for now
-ROOT.DisableImplicitMT()
-
 def load_functions(mode='reco'):
     '''Load user-defined functions.
 
@@ -88,6 +85,7 @@ def rdf_def_weights(rdf_runs, rdf_events, data=False):
     Args:
         rdf_runs (ROOT.RDataFrame): ROOT.RDataFrame object created from the 'Runs' tree.
             Only works if the RDF has columns named 'genEventSumw' and 'genEventCount'.
+            Can be (None) if data=True.
         rdf_events (ROOT.RDataFrame): The ROOT.RDataFrame object created from the 'Events' tree.
         dict_sum_weights (float): Sum of weights (computed from compute_sum_weights).
         data (bool, optional): Whether the provided RDF is data.
@@ -165,7 +163,7 @@ def rdf_def_jpsi(rdf):
         branches (list(str)): List of TBranches pertinent to the definitions.
     '''
     new_rdf = (rdf.Filter('nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.')
-                  )
+                )
     branches = get_rdf_branches('Jpsi')
     return new_rdf, branches
 
@@ -197,13 +195,15 @@ def rdf_def_vertex(rdf):
                   )
     return new_rdf, branches
 
-def rdf_def_jets(rdf, CAT, YEAR):
+def rdf_def_jets(rdf, CAT, YEAR, data=False):
     '''Jets RDF definition.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
         CAT (str): Analysis category.
         YEAR (int): Year of data-taking.
+        data (bool, optional): Whether the provided RDF is data.
+            Defaults to False.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
@@ -216,38 +216,61 @@ def rdf_def_jets(rdf, CAT, YEAR):
     load_functions()
     match f'{CAT}_{YEAR}':
         case 'GF_2018':
-            goodjets = '(Jet_pt > 20 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)'
+            goodjets = '(Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)'
         case _:
             raise ValueError(f'Good-jets definition does not exist for the combination of {CAT} and {YEAR}.')
-    new_rdf = (rdf.Define('goodjets', goodjets))
-    branches = ['goodjets']
+    new_rdf = (rdf.Define('goodJets', goodjets)
+                  .Define('nGoodJets', 'Sum(goodJets)')
+                  .Filter('nGoodJets>=2', 'Events must contain two jets from the charm quarks.')
+                )
+    new_rdf = (new_rdf.Define('goodJetPt', 'Jet_pt[goodJets]')
+                .Define('goodJetEta', 'Jet_eta[goodJets]')
+                .Define('goodJetPhi', 'Jet_phi[goodJets]')
+                .Define('goodJetMass', 'Jet_mass[goodJets]')
+                .Define('goodJetCvL', 'Jet_btagDeepCvL[goodJets]')
+                )
+    new_rdf = (new_rdf.Define('jet1_pt', 'goodJetPt[0]')
+                .Define('jet2_pt', 'goodJetPt[1]')
+                .Define('jet1_eta', 'goodJetEta[0]')
+                .Define('jet2_eta', 'goodJetEta[1]')
+                .Define('jet1_CvL', 'goodJetCvL[0]')
+                .Define('jet2_CvL', 'goodJetCvL[1]')
+                .Define('index_CloseFar', 'jetCloseFar(goodJetPt, goodJetEta, goodJetPhi, goodJetMass,'
+                                          'Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass)')
+                .Filter('index_CloseFar[0]!= -1', 'at least one close jet')
+                .Define('jetClose_nMuons','Jet_nMuons[goodJets][index_CloseFar[0]]')
+                .Define('jetFar_nMuons','Jet_nMuons[goodJets][index_CloseFar[1]]')
+                .Define('jetClose_nElectrons','Jet_nElectrons[goodJets][index_CloseFar[0]]')
+                .Define('jetFar_nElectrons','Jet_nElectrons[goodJets][index_CloseFar[1]]')
+                .Define('jetClose_pt','goodJetPt[index_CloseFar[0]]')
+                .Define('jetFar_pt','goodJetPt[index_CloseFar[1]]')
+                .Define('jetClose_cRegCorr','Jet_cRegCorr[goodJets][index_CloseFar[0]]')
+                .Define('jetFar_cRegCorr','Jet_cRegCorr[goodJets][index_CloseFar[1]]')
+                .Define('jetClose_CvL','goodJetCvL[index_CloseFar[0]]')
+                .Define('jetFar_CvL','goodJetCvL[index_CloseFar[1]]')
+                .Define('jetClose_nConst','Jet_nConstituents[goodJets][index_CloseFar[0]]')
+                .Define('jetFar_nConst','Jet_nConstituents[goodJets][index_CloseFar[1]]')
+                .Define('jetClose_JpsiPtRatio','Jpsi_kin_pt[0]/goodJetPt[index_CloseFar[0]]')
+                )
+    branches = ['goodJets', 'nGoodJets', 'goodJetPt', 'goodJetEta', 'goodJetPhi', 'goodJetMass', 'goodJetCvL']
     branches += get_rdf_branches('jet')
-    return new_rdf, branches
-
-def rdf_def_goodjets(rdf, CAT, YEAR):
-    '''RDF define with good jets definition.
-
-    Args:
-        rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
-        CAT (str): Analysis category.
-        YEAR (int): Year of data-taking.
-
-    Returns:
-        new_rdf (ROOT.RDataFrame): Modified RDataFrame.
-        branches (list(str)): List of TBranches pertinent to the definitions.
-
-    Raises:
-        ValueError: If the combination of 'CAT' and 'YEAR' does not correspond
-            to an existing trigger.
-    '''
-    match f'{CAT}_{YEAR}':
-        case 'GF_2018':
-            goodjets = '(Jet_pt > 20 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)'
-        case _:
-            raise ValueError(f'Good-jets definition does not exist for the combination of {CAT} and {YEAR}.')
-    new_rdf = (rdf.Define('goodjets', goodjets))
-                #   .Filter('goodjets==true'))
-    branches = ['goodjets']
+    if not data:
+        new_rdf = (new_rdf.Define('goodPartonFlavour', 'Jet_partonFlavour[goodJets]')
+                    .Define('jet1_partonFlavour', 'abs(goodPartonFlavour[0])')
+                    .Define('jet2_partonFlavour', 'abs(goodPartonFlavour[1])')
+                    .Define('jetFar_ptCharm','(abs(goodPartonFlavour[index_CloseFar[1]])==4) ? Jet_cRegCorr[goodJets][index_CloseFar[1]] * goodJetPt[index_CloseFar[1]]:-1.')
+                    .Define('jetFar_ptGluon','(abs(goodPartonFlavour[index_CloseFar[1]])==21) ? Jet_cRegCorr[goodJets][index_CloseFar[1]] * goodJetPt[index_CloseFar[1]]:-1.')
+                    .Define('jetFar_CvLCharm','(abs(goodPartonFlavour[index_CloseFar[1]])==4) ? goodJetCvL[index_CloseFar[1]]:-1.')
+                    .Define('jetFar_CvLGluon','(abs(goodPartonFlavour[index_CloseFar[1]])==21) ? goodJetCvL[index_CloseFar[1]]:-1.')
+                    .Define('jetClose_partonFlavour','abs(goodPartonFlavour[index_CloseFar[0]])')
+                    .Define('jetFar_partonFlavour','abs(goodPartonFlavour[index_CloseFar[1]])')
+                    .Define('jetClose_Scale','goodJetPt[index_CloseFar[0]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[0]]]')
+                    .Define('jetFar_Scale','goodJetPt[index_CloseFar[1]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[1]]]')
+                    .Define('jetClose_cRegCorrScale','goodJetPt[index_CloseFar[0]]*Jet_cRegCorr[goodJets][index_CloseFar[0]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[0]]]')
+                    .Define('jetFar_cRegCorrScale','goodJetPt[index_CloseFar[1]]*Jet_cRegCorr[goodJets][index_CloseFar[1]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[1]]]')     
+                    )
+        branches += ['goodPartonFlavour']
+        branches += get_rdf_branches('jet_mconly')
     return new_rdf, branches
 
 def rdf_def_genpart(rdf):

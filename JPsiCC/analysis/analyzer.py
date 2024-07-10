@@ -187,7 +187,7 @@ class JPsiCCAnalyzer:
             raise Exception('Please try again for data.')
         rdf_events = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
         rdf_events, br1 = rdfdefines.rdf_def_sample_meta(rdf_events)
-        self._rdf, br2 = rdfdefines.rdf_def_weights(rdf_events, sum_weights=1., data=self._DATA)
+        self._rdf, br2 = rdfdefines.rdf_def_weights(None, rdf_events, data=self._DATA)
         self._branches = self._branches + br1 + br2
         return
     
@@ -230,11 +230,11 @@ class JPsiCCAnalyzer:
                 new_rdf, br2 = rdfdefines.rdf_def_jpsi(new_rdf)
                 new_rdf, br3 = rdfdefines.rdf_def_muons(new_rdf)
                 new_rdf, br4 = rdfdefines.rdf_def_vertex(new_rdf)
-                # new_rdf, br4 = rdfdefines.rdf_def_jets(new_rdf, self._CAT, self._YEAR)
+                new_rdf, br5 = rdfdefines.rdf_def_jets(new_rdf, self._CAT, self._YEAR, data=self._DATA)
                 if self._SAMPLE=='MC_SIG':
                     new_rdf, br_gen = rdfdefines.rdf_def_genpart(new_rdf)
                     self._branches += br_gen
-                self._branches = self._branches + br1 + br2 + br3 + br4
+                self._branches = self._branches + br1 + br2 + br3 + br4 + br5
             case _:
                 new_rdf = self._rdf
         self._rdf = new_rdf
@@ -504,17 +504,17 @@ if __name__=='__main__':
             if preset=='noweight': use_weight, draw_indiv = False, False
 
             mcbkg1 = JPsiCCAnalyzer('MC_BKG1', 2018, '202406', 'GF', weights=use_weight)
-            mcbkg1.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240709.root')
+            mcbkg1.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240710.root')
             mcbkg1.selectSampleRDF('BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
 
             mcbkg3 = JPsiCCAnalyzer('MC_BKG3', 2018, '202406', 'GF', weights=use_weight)
-            mcbkg3.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240709.root')
+            mcbkg3.readSnapshot('snapshot_MC_BKG_2018_GF_v202406_20240710.root')
             mcbkg3.selectSampleRDF('JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
 
             databkg = JPsiCCAnalyzer('DATA_BKG', 2018, '202406', 'GF', weights=use_weight)
-            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202406_20240709.root')
+            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202406_20240710.root')
 
             mcsig = JPsiCCAnalyzer('MC_SIG', 2018, '202406', 'GF', weights=use_weight)
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240709.root')
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240710.root')
 
             mcbkg1.stackMultiHistos([mcbkg1, mcbkg3, databkg], mcsig, draw_indiv=draw_indiv)
