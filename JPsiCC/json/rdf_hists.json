@@ -34,8 +34,6 @@
         {
             "Muon_dxy": {"name": "Muon_dxy", "title": "Muon_dxy: dxy (with sign) wrt first PV, in cm", "bin": 100, "xmin": -10.0, "xmax": 10.0},
             "Muon_dxyErr": {"name": "Muon_dxyErr", "title": "Muon_dxyErr: dxy uncertainty, in cm", "bin": 100, "xmin": -1.0, "xmax": 1.0},
-            "Muon_dxy": {"name": "Muon_dz", "title": "Muon_dz: dz (with sign) wrt first PV, in cm", "bin": 100, "xmin": -10.0, "xmax": 10.0},
-            "Muon_dxyErr": {"name": "Muon_dzErr", "title": "Muon_dz: dz uncertainty, in cm", "bin": 100, "xmin": -1.0, "xmax": 1.0},
             "Muon_eta": {"name": "Muon_eta", "title": "Muon_eta: eta", "bin": 100, "xmin": -5.0, "xmax": 5.0},
             "Muon_phi": {"name": "Muon_phi", "title": "Muon_phi: phi", "bin": 70, "xmin": -3.5, "xmax": 3.5},
             "Muon_pt": {"name": "Muon_pt", "title": "Muon_pt: pt", "bin": 100, "xmin": 0.0, "xmax": 100.0},
