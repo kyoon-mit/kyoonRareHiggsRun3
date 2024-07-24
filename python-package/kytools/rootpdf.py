@@ -5,226 +5,226 @@ rootpdf
 A module to create, fit, and store PDF models in ROOT.
 
 """
-from ROOT import RooRealVar, RooArgList
-from ROOT import RooGaussian, RooBernstein
-from ROOT import RooWorkspace, RooDataHist, RooDataSet
-from ROOT import RooFit
 import os
+import ROOT
+from datetime import date
 
-class Models:
-    """Creates PDF models.
+################################################################################
 
-    The __init__ method creates two internal lists for data storage, one for variables
-    and another for PDFs. This ensures that the variable and PDF objects do not get
-    delete during the lifetime of the class instance.
-    """
-    def __init__(self):
-        print(f'{'\033[1;34m'}kytools: You have created an instance of rootpdf.Models.{'\033[0m'}')
-        self._varlist = []
-        self._pdflist = []
-
-    def __var(self, name, title, value, low, high, unit=''):
-        """Internal method for creating a RooRealVar.
-
-        Args:
-            name (str): Name of the variable.
-            title (str): Display title.
-            value (float): Nominal value.
-            low (float): Lower limit.
-            high (float): Upper limit.
-            unit (str, optional): Units of this value.
-        """
-        var = RooRealVar(name, title, value, low, high, unit)
-        self._varlist.append(var)
-        print (f'{'\033[0;36m'}kytools: Created a variable with the name, {name}.{'\033[0m'}')
-        return var
-
-    def gaussian(self, x, mean, mean_low, mean_high,
-                 sigma, sigma_low, sigma_high, suffix):
-        """Creates and returns a RooGaussian.
-
-        Args:
-            x (RooRealVar): Key variable.
-            mean (float): Nominal mean value.
-            mean_low (float): Lower limit of the mean.
-            mean_high (float): Upper limit of the mean.
-            sigma (float): Nominal sigma value.
-            sigma_low (float): Lower limit of the mean.
-            sigma_high (float): Upper limit of the mean.
-            suffix (str): Suffix for the name of the variables.
-        """
-        mu = self.__var('gauss_mu_{}'.format(suffix), 'gauss_mu', mean, mean_low, mean_high)
-        sigma = self.__var('gauss_sigma_{}'.format(suffix), 'gauss_sigma', sigma, sigma_low, sigma_high)
-        pdfname = 'gauss'
-        pdf = RooGaussian(pdfname, pdfname, x, mu, sigma)
-        self._pdflist.append(pdf)
-        print (f'{'\033[0;32m'}kytools: Created a Gaussian with the name, {pdfname}.{'\033[0m'}')
-        return pdf
-    
-    def crystalball(self, x, mean, mean_low, mean_high,
-                    width=1., width_low=0., width_high=3.,
-                    aL=1., aL_low=0., aL_high=5.,
-                    aR=1., aR_low=0., aR_high=5.,
-                    nL=5., nL_low=2., nL_high=50.,
-                    nR=2., nR_low=0., nR_high=5.):
-        """Creates and returns a RooCrystalBall
-
-        """
-        return
-    
-    def bernstein(self, x, degree, suffix, coeff_vals):
-        """Creates and returns a Bernstein polynomial of degree n.
-
-        Args:
-            x (RooRealVar): Key variable.
-            degree (int): Degree of the polynomial
-            suffix (str): Suffix for the name of the variables.
-            coeff_vals (list of tuple(float) or list of list(float)): For each
-                Bernstein coefficient, provide the nominal value, lower limit, and
-                upper limit as a tuple or list. For example, if I create a Bernstein
-                polynomial of 2nd order, I would provide for this argument, e.g.
-                    coeffs=[(.2, 0., .5), (.1, 0., 1.), (.1, 0., 1.)]
-        """
-        coefflist = RooArgList('bern{}_coeffs'.format(degree))
-        if not len(coeff_vals) == (degree+1):
-            raise Exception('Length of coeff_vals must be equal to the degrees of freedom.')
-        for i in range(0, degree+1):
-            if not len(coeff_vals[i]) == 3:
-                raise Exception('Each item in coeff_vals must be a tuple or list of length 3.')
-            coeff = RooRealVar('bern_c{}_{}'.format(i, suffix), 'bern_c{}'.format(i), coeff_vals[i][0], coeff_vals[i][1], coeff_vals[i][2])
-            self._varlist.append(coeff)
-            coefflist.add(coeff)
-        pdfname = 'bern{}_{}'.format(degree, suffix)
-        pdf = RooBernstein(pdfname, pdfname, x, coefflist)
-        self._pdflist.append(pdf)
-        print (f'{'\033[0;32m'}kytools: Created a Bernstein polynomial of degree {degree} (d.o.f. = {degree+1}) with the name, {pdfname}.{'\033[0m'}')
-        return pdf
-
-# ==============================================================================
-
-class FitIt:
+class FittingTool:
     """This class provides methods for fitting the model.
 
-    TODO: __init__ description
-
     Args:
-        x (RooRealVar): Key variable.
-        wsname (str): Name of the RooWorkspace.
+        YEAR (int): Year of data-taking.
+        CAT (str): Category of the analysis.
+        VERS (str): Version of the files.
+        VARNAME (str): Name of the variable to fit.
+        VARTITLE (str): Title of the variable to fit.
+        VARLOW (float): Low range of the variable.
+        VARHIGH (float): High range of the variable.
 
-    Attributes: TODO
+    Raises:
+        TypeError: If the value provided for YEAR is not an integer.
+        TypeError: If the value provided for VERS is not a string.
+        TypeError: If the value provided for CAT is not a string.
+        TypeError: If the value provided for VARNAME is not a string.
+        TypeError: If the value provided for VARTITLE is not a string.
+        TypeError: If the value provided for VARLOW is not a number.
+        TypeError: If the value provided for VARHIGH is not a number.
+        ValueError: If VARLOW is not smaller than VARHIGH.
     """
+    def __init__(self, YEAR, CAT, VERS, VARNAME, VARTITLE, VARLOW, VARHIGH):
+        if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
+        if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
+        if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
+        if not type(VARNAME) is str: raise TypeError(f'VARNAME must be a string.')
+        if not type(VARTITLE) is str: raise TypeError(f'VARTITLE must be a string.')
+        if not isinstance(VARLOW, (int, float)): raise TypeError(f'VARLOW must be a float or int.')
+        if not isinstance(VARLOW, (int, float)): raise TypeError(f'VARHIGH must be a float or int.')
+        if not VARLOW < VARHIGH: raise ValueError(f'VARLOW must be smaller than VARHIGH.')
 
-    def __init__(self, x, ws_name):
-        self._x = x
-        self._workspace = RooWorkspace(ws_name, 'workspace') # RooWorkspace
-        self._data = dict() # Dictionary for RooDataHist or RooDataSet
-        self._pdf = dict() # Dictionary for RooAbsPdf
+        self.YEAR, self.CAT, self.VERSION, self.VARNAME, self.VARTITLE, self.VARLOW, self.VARHIGH =\
+            YEAR, CAT, VERS, VARNAME, VARTITLE, VARLOW, VARHIGH
 
-        print(f'{'\033[1;34m'}kytools: You have created an instance of rootpdf.FitIt.{'\033[0m'}')
-        print(f'{'\033[0;32m'}kytools: Created a RooWorkspace with the name, {ws_name}.{'\033[0m'}')
+        self.x = ROOT.RooRealVar(VARNAME, VARTITLE, VARLOW, VARHIGH)
 
-    # def blind(self, range_low, range_high):
-    #     """TODO
+        today = date.today()
+        self._date = f'{today.year}{today.month:02}{today.day:02}'
+        self._anpath = 'JPsiCC'
+        self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
+        self._sfx = f'{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}'
+        self._varsfx = f'{self.YEAR}_{self.CAT}'
+        self._pdfkeys = {'gaussian': f'gaussian_{self._varsfx}'}
 
-    #     Attributes:
-    #         range_low (float): Low range of the blinded region.
-    #         range_high (float): High range of the blinded region.
-    #     """
-    #     self._x.setRange('left', xlow, range_low)
-    #     self._x.setRange('right', range_high, xhigh)
+        self.signalPDF = None
+        self.MCSIG, self.MCBKG, self.DATABKG = None, None, None
+        self.ws_name = f'workspace_{self._sfx}'
+        self.w = ROOT.RooWorkspace(self.ws_name, self.ws_name)
 
-    def add_data(self, data, data_key):
-        """Adds RooDataHist or RooDataSet data to this class instance.
+        self._vars, self._pdfs, self._data = {}, {}, {}
+        self._pdfs = {}
 
-        Attributes:
-            data (RooDataHist or RooDataSet): The data.
-            key (str): String key for storing this data in a dictionary.
+        print('{}kytools: You have created an instance of rootpdf.FittingTool.{}'.format('\033[1;34m', '\033[0m'))
+
+    def makeSignalPDF(self, pdf_type):
+        """Create a signal PDF to this class.
+
+        Args:
+            pdf_type (str): Name of the PDF.
+        
+        Raises:
+            ValueError: If the value provided for pdf_type is not a valid option.
+
+        Returns:
+            (None)
         """
-        self._data[data_key] = data
-
-    def add_pdf(self, pdf, pdf_key):
-        """Adds RooAbsPdf to this class instance.
-
-        Attributes:
-            pdf (RooAbsPdf): The pdf.
-            key (str): String key for storing this pdf in a dictionary.
-        """
-        self._pdf[pdf_key] = pdf
+        mean, stddev, range, low, high =\
+            (self.VARLOW+self.VARHIGH)/2, (self.VARHIGH-self.VARLOW)/10, (self.VARHIGH-self.VARLOW), self.VARLOW, self.VARHIGH
+        match pdf_type:
+            case 'gaussian':
+                pdf_name, mu_name, sigma_name = self._pdfkeys[pdf_type],\
+                    f'gauss_mu_{self._varsfx}', f'gauss_sigma_{self._varsfx}'
+                self._vars[mu_name] = ROOT.RooRealVar(mu_name, mu_name, mean, low, high)
+                self._vars[sigma_name] = ROOT.RooRealVar(sigma_name, sigma_name, stddev, 1e-2, range/2)
+                self._pdfs[pdf_name] = ROOT.RooGaussian(pdf_name, pdf_name, self.x, self._vars[mu_name], self._vars[sigma_name])
+                print ('{}kytools: Imported contents into RooWorkspace {}.{}'.format('\033[1;36m', self.ws_name, '\033[0m'))
+            case _:
+                raise ValueError(f'pdf_type={pdf_type} is not a valid option.')
+        print ('{}kytools: Created a signal PDF ----> {}.{}'.format('\033[0;32m', pdf_name, '\033[0m'))
+        return
     
-    def fit(self, data_key, pdf_key, strategy=2, max_tries=10):
-        """Fit the data to the model.
+    def loadRooDataSet(self, rdf, samp):
+        """Load RDF as a RooDataSet.
 
-        Used here is RooFit's `FitTo` method, which is based on likelihood maximization.
+        Args:
+            rdf (ROOT.RDataFrame): RDF object containing the data.
+            samp (str): Either one of the following options.
+                'MC_SIG', 'MC_BKG', 'DATA_BKG'
+        
+        Raises:
+            KeyError: If the VARNAME provided for __init__ does not match any column in the RDF.
+            ValueError: If the string provided for samp is not among the options.
 
-        If the fit fails, the method will try re-fitting with randomized parameters
-        until max tries are reached.
+        Returns:
+            (None)
+        """
+        if self.VARNAME not in rdf.GetColumnNames():
+            raise KeyError(f'The VARNAME={self.VARNAME} provided for __init__ does not match any column in the RDF.')
+        match samp:
+            case 'MC_SIG':
+                dataset_name = f'RooDataSet_MC_SIG_{self.YEAR}_{self.CAT}'
+            case 'MC_BKG':
+                dataset_name = f'RooDataSet_MC_BKG_{self.YEAR}_{self.CAT}'
+            case 'DATA_BKG':
+                dataset_name = f'RooDataSet_DATA_BKG_{self.YEAR}_{self.CAT}'
+            case _: raise ValueError(f'samp={samp} is not a valid option.')
+        rdsMaker = ROOT.std.move(ROOT.RooDataSetHelper(dataset_name, dataset_name, ROOT.RooArgSet(self.x)))
+        roo_data_set_result = rdf.Book(rdsMaker, (self.VARNAME,))
+        self._data[dataset_name] = roo_data_set_result.GetValue()
+        return
 
-        Attributes:
-            data_key (str): String key of the data to fit.
-            pdf_key (str): String key of the PDF model to fit.
+    def loadRooDataHist(self, rdf, samp):
+        """Load RDF as a RooDataHist.
+
+        Args:
+            rdf (ROOT.RDataFrame): RDF object containing the data.
+            samp (str): Either one of the following options.
+                'MC_SIG', 'MC_BKG', 'DATA_BKG'
+        
+        Raises:
+            KeyError: If the VARNAME provided for __init__ does not match any column in the RDF.
+            ValueError: If the string provided for samp is not among the options.
+
+        Returns:
+            (None)
+        """
+        if self.VARNAME not in rdf.GetColumnNames():
+            raise KeyError(f'The VARNAME={self.VARNAME} provided for __init__ does not match any column in the RDF.')
+        match samp:
+            case 'MC_SIG':
+                datahist_name = f'RooDataHist_MC_SIG_{self.YEAR}_{self.CAT}'
+            case 'MC_BKG':
+                datahist_name = f'RooDataHist_MC_BKG_{self.YEAR}_{self.CAT}'
+            case 'DATA_BKG':
+                datahist_name = f'RooDataHist_DATA_BKG_{self.YEAR}_{self.CAT}'
+            case _: raise ValueError(f'samp={samp} is not a valid option.')
+        rdhMaker = ROOT.RooDataHistHelper(datahist_name, datahist_name, ROOT.RooArgSet(self.x))
+        roo_data_hist_result = rdf.Book(ROOT.std.move(rdhMaker), (self.VARNAME,))
+        self._data[datahist_name] = roo_data_hist_result.GetValue()
+        return
+
+    def fit(self, samp, pdf_type, binned=True, strategy=2, max_tries=10):
+        """
+        Args:
             strategy (int, optional): RooFit fitting strategy. See RooFit documentation.
                 Defaults to 2.
             max_tries (int, optional): Number of max tries to reach. Defaults to 10.
 
-        Returns:
-            TODO
+        Raises:
+            KeyError: If a PDF corresponding to the pdf_type does not exist.
+            KeyError: If the given options do not correspond to an existing data.
         """
-        data = self._data[data_key]
-        pdf = self._pdf[pdf_key]
+        if binned: datakey_pfx = 'RooDataHist'
+        else: datakey_pfx = 'RooDataSet'
+        pdfkey = self._pdfkeys[pdf_type]
+        datakey = f'{datakey_pfx}_{samp}_{self.YEAR}_{self.CAT}'
+        
+        if pdfkey in list(self._pdfs.keys()): pdf = self._pdfs[pdfkey]
+        else: raise KeyError(f'You have not created a pdf_type={pdf_type} yet.')
+        if datakey in list(self._data.keys()): data = self._data[datakey]
+        else: raise KeyError(f'{datakey} does not exist. Please check your options and try again.')
+
         params = pdf.getParameters(0)
         status = -1
-        print (f'{'\033[1;36m'}kytools: Performing likelihood fit of {pdf.GetTitle()} to {data.GetTitle()}.{'\033[0m'}')
+        print ('{}kytools: Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
         for ntries in range(1, max_tries+1):
-            print (f'{'\033[0;36m'}kytools: Fit trial #{ntries}.{'\033[0m'}')
+            print ('{}kytools: Fit trial #{}.{}'.format('\033[1;36m', ntries, '\033[0m'))
             fit_result = pdf.fitTo(data,
-                                   RooFit.Save(True),
-                                   RooFit.Minimizer('Minuit2', 'minimize'),
-                                   RooFit.Strategy(strategy),
-                                   RooFit.PrintLevel(-1),
-                                   RooFit.Warnings(False),
-                                   RooFit.PrintEvalErrors(-1))
+                                   ROOT.RooFit.Save(True),
+                                   ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
+                                   ROOT.RooFit.Strategy(strategy),
+                                   ROOT.RooFit.PrintLevel(-1),
+                                   ROOT.RooFit.Warnings(False),
+                                   ROOT.RooFit.PrintEvalErrors(-1))
             status = fit_result.status()
             if (status != 0):                                                                                                                              
                 params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
                 ntries += 1
             else:
                 break
-        print (f'{'\033[0;36m'}kytools: Likelihood fit has exited with status {status}.{'\033[0m'}')
+        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[1;36m', status, '\033[0m'))
         match status:
             case 0:
-                print (f'{'\033[0;36m'}         Likelihood fit has converged.{'\033[0m'}')
+                print ('{}         Likelihood fit has converged.{}'.format('\033[1;36m', '\033[0m'))
             case 1:
-                print (f'{'\033[0;36m'}         Covariance was made positive definite.{'\033[0m'}')
+                print ('{}         Covariance was made positive definite.{}'.format('\033[1;36m', '\033[0m'))
             case 2:
-                print (f'{'\033[0;36m'}         Hessian is invalid.{'\033[0m'}')
+                print ('{}         Hessian is invalid.{}'.format('\033[1;36m', '\033[0m'))
             case 3:
-                print (f'{'\033[0;36m'}         EDM is above max.{'\033[0m'}')
+                print ('{}         EDM is above max.{}'.format('\033[1;36m', '\033[0m'))
             case 4:
-                print (f'{'\033[0;36m'}         Reached call limit.{'\033[0m'}')
+                print ('{}         Reached call limit.{}'.format('\033[1;36m', '\033[0m'))
             case 5:
-                print (f'{'\033[0;36m'}         Please investigate.{'\033[0m'}')
+                print ('{}         Please investigate.{}'.format('\033[1;36m', '\033[0m'))
             case _:
-                print (f'{'\033[0;36m'}         DISASTER!{'\033[0m'}')
+                print ('{}         DISASTER!{}'.format('\033[1;36m', '\033[0m'))
+        return
 
-    def add_norm(self):
-        pass
-
-    def draw(self):
-        pass
-
-    def wsave(self, fname, path='.'):
+    def saveWorkspace(self):
         """Saves all data and pdf to workspace.
 
-        Attributes:
-            fname (str): File name to store your workspace.
-            path (str, optional): Directory name to save your workspace.
+        Prints the name of the ROOT file that is created in the current directory.
+
+        Args:
+            (None)
+
+        Returns:
+            (None)
         """
-        print (f'{'\033[1;36m'}kytools: Importing contents to workspace {self._workspace.GetName()}.{'\033[0m'}')
-        for _, data in self._data.items():
-            getattr(self._workspace, 'import')(data)
-        for _, pdf in self._pdf.items():
-            getattr(self._workspace, 'import')(pdf)
-        os.makedirs(path, exist_ok=True)
-        save_path = os.path.join(path, fname)
-        self._workspace.writeToFile(save_path)
-        print (f'{'\033[1;36m'}kytools: Saved workspace {self._workspace.GetName()} to {save_path}.{'\033[0m'}')
+        for _, var in self._vars.items(): getattr(self.w, 'import')(var)
+        for _, pdf in self._pdfs.items(): getattr(self.w, 'import')(pdf)
+        for _, dat in self._data.items(): getattr(self.w, 'import')(dat)
+        print ('{}kytools: Saving RooWorkspace {} to {}.root...{}'.format('\033[1;36m', self.ws_name, self.ws_name, '\033[0m'))
+        self.w.writeToFile(f'{self.ws_name}.root')
+        self.w.Print()
+        print ('{}kytools: Successfully saved {}{}'.format('\033[1;36m', self.ws_name, '\033[0m'))
