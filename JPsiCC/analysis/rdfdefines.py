@@ -156,7 +156,7 @@ def rdf_def_weights(rdf_runs, rdf_events, branches=[], cut_flow_dict={}, data=Fa
     if not data: branches.append('genWeight')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_filter_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}):
+def rdf_def_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, filter=True):
     '''RDF define and filter with triggers.
 
     Args:
@@ -167,6 +167,8 @@ def rdf_filter_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}):
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
             Defaults to {}.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.        
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified RDataFrame.
@@ -185,13 +187,15 @@ def rdf_filter_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}):
         case _:
             raise ValueError(f'Trigger does not exist for the combination of {CAT} and {YEAR}.')
     try: new_rdf = rdf.Define('trigger', trigger)
-    except: new_rdf = rdf
-    new_rdf = new_rdf.Filter('trigger>0')
+    except:
+        new_rdf = rdf
+        raise RuntimeWarning('Trigger column could not be defined.')
+    if filter: new_rdf = new_rdf.Filter('trigger>0')
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'trigger', new_rdf.Sum('w').GetValue())
     branches += ['trigger']
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}):
+def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}, filter=True):
     '''RDF definition for J/Psi.
 
     Args:
@@ -200,19 +204,21 @@ def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}):
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
             Defaults to {}.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
         branches (list(str)): Updated list of TBranches.
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
-    new_rdf = (rdf.Filter('nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.')
-    )
+    if filter: new_rdf = rdf.Filter('nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.')
+    else: new_rdf = rdf
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'nJpsi>0', new_rdf.Sum('w').GetValue())
     branches += get_rdf_branches('Jpsi')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_muons(rdf, branches=[], cut_flow_dict={}):
+def rdf_def_muons(rdf, branches=[], cut_flow_dict={}, filter=True):
     '''Muons RDF definition.
 
     Args:
@@ -221,6 +227,8 @@ def rdf_def_muons(rdf, branches=[], cut_flow_dict={}):
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
             Defaults to {}.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
@@ -231,7 +239,7 @@ def rdf_def_muons(rdf, branches=[], cut_flow_dict={}):
     branches += get_rdf_branches('muon')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_vertex(rdf, branches=[], cut_flow_dict={}):
+def rdf_def_vertex(rdf, branches=[], cut_flow_dict={}, filter=True):
     '''Vertex RDF definition.
 
     Args:
@@ -240,19 +248,21 @@ def rdf_def_vertex(rdf, branches=[], cut_flow_dict={}):
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
             Defaults to {}.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
         branches (list(str)): Updated list of TBranches.
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
-    new_rdf = (rdf.Filter('PV_npvsGood>0', 'Number of PVs must be at least 1.')
-    )
+    if filter: new_rdf = rdf.Filter('PV_npvsGood>0', 'Number of PVs must be at least 1.')
+    else: new_rdf = rdf
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'PV_npvsGood>0', new_rdf.Sum('w').GetValue())
     branches += get_rdf_branches('vertex')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
+def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False, filter=True):
     '''Jets RDF definition.
 
     Args:
@@ -265,6 +275,8 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
             Defaults to {}.
         data (bool, optional): Whether the provided RDF is data.
             Defaults to False.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
@@ -283,9 +295,10 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
             raise ValueError(f'Good-jets definition does not exist for the combination of {CAT} and {YEAR}.')
     new_rdf = (rdf.Define('goodJets', goodjets)
                 .Define('nGoodJets', 'Sum(goodJets)')
-                .Filter('nGoodJets>=2', 'Events must contain two jets from the charm quarks.')
     )
-    cut_flow_dict = add_cut_flow(cut_flow_dict, 'nGoodJets>=2', new_rdf.Sum('w').GetValue())
+    if filter:
+        new_rdf = new_rdf.Filter('nGoodJets>=2', 'Events must contain two jets from the charm quarks.')
+        cut_flow_dict = add_cut_flow(cut_flow_dict, 'nGoodJets>=2', new_rdf.Sum('w').GetValue())
     new_rdf = (new_rdf.Define('goodJetPt', 'Jet_pt[goodJets]')
                 .Define('goodJetEta', 'Jet_eta[goodJets]')
                 .Define('goodJetPhi', 'Jet_phi[goodJets]')
@@ -304,8 +317,11 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
                 .Define('jet2_CvL', 'goodJetCvL[1]')
                 .Define('index_CloseFar', 'jetCloseFar(goodJetPt, goodJetEta, goodJetPhi, goodJetMass,'
                                         'Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass)')
-                .Filter('index_CloseFar[0]!= -1', 'at least one close jet')
-                .Define('jetClose_nMuons','Jet_nMuons[goodJets][index_CloseFar[0]]')
+    )
+    if filter:
+        new_rdf = new_rdf.Filter('index_CloseFar[0]!= -1', 'at least one close jet')
+        cut_flow_dict = add_cut_flow(cut_flow_dict, 'nCloseJets>0', new_rdf.Sum('w').GetValue())
+    new_rdf = (new_rdf.Define('jetClose_nMuons','Jet_nMuons[goodJets][index_CloseFar[0]]')
                 .Define('jetFar_nMuons','Jet_nMuons[goodJets][index_CloseFar[1]]')
                 .Define('jetClose_nElectrons','Jet_nElectrons[goodJets][index_CloseFar[0]]')
                 .Define('jetFar_nElectrons','Jet_nElectrons[goodJets][index_CloseFar[1]]')
@@ -319,8 +335,7 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
                 .Define('jetFar_nConst','Jet_nConstituents[goodJets][index_CloseFar[1]]')
                 .Define('jetClose_JpsiPtRatio','Jpsi_kin_pt[0]/goodJetPt[index_CloseFar[0]]')
     )
-    cut_flow_dict = add_cut_flow(cut_flow_dict, 'nCloseJets>0', new_rdf.Sum('w').GetValue())
-    branches = ['goodJets', 'nGoodJets', 'goodJetPt', 'goodJetEta', 'goodJetPhi', 'goodJetMass', 'goodJetCvL']
+    branches += ['goodJets', 'nGoodJets', 'goodJetPt', 'goodJetEta', 'goodJetPhi', 'goodJetMass', 'goodJetCvL']
     branches += get_rdf_branches('jet')
     if not data:
         new_rdf = (new_rdf.Define('goodPartonFlavour', 'Jet_partonFlavour[goodJets]')
@@ -341,7 +356,7 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False):
         branches += get_rdf_branches('jet_mconly')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_higgs(rdf, branches=[], cut_flow_dict={}):
+def rdf_def_higgs(rdf, branches=[], cut_flow_dict={}, filter=True):
     '''Higgs RDF definition.
 
     Args:
@@ -350,6 +365,8 @@ def rdf_def_higgs(rdf, branches=[], cut_flow_dict={}):
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
             Defaults to {}.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame.
