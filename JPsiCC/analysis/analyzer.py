@@ -9,6 +9,8 @@ from kytools import jsonreader, rootpdf
 import rdfdefines
 from datetime import date
 import os, pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
 import ROOT
 
 ROOT.EnableImplicitMT()
@@ -226,7 +228,7 @@ class JPsiCCLoader:
         '''
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_filter_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow)
@@ -306,20 +308,20 @@ class JPsiCCLoader:
         print(self._cutflow)
         return
     
-    def readSnapshot(self, filename, treename='Events', make_pkl=True):
+    def readSnapshot(self, filename, treename='Events', read_pkl=True):
         '''Retrieve RDF from a saved snapshot ROOT file.
 
         Args:
             filename (str): Name of the snapshot ROOT file.
             treename (str, optional): Name of the TTree in the ROOT file.
                 Defaults to 'Events'.
-            make_pkl (bool, optional): Whether to read the corresponding pickle as well.
+            read_pkl (bool, optional): Whether to read the corresponding pickle as well.
 
         Returns:
             (None)
         '''
         self._rdf = ROOT.RDataFrame(treename, filename)
-        if make_pkl:
+        if read_pkl:
             pklname = f'{filename.rstrip(".root")}.pkl'
             with open(pklname, 'rb') as f:
                 self._cutflow = pickle.load(f)
@@ -379,7 +381,31 @@ class JPsiCCLoader:
         '''
         if key in self._hists:
             return self._hists[key]
-        return 
+        return
+    
+    def makeCutFlowPlot(self):
+        '''Make a plot showing the cut flow.
+
+        Returns:
+            (None)
+
+        Raises:
+            RuntimeError: If the internal self._cutflow object is empty.
+        '''
+        if len(self._cutflow)==0: raise RuntimeError('The self._cutflow object is empty.')
+        # plt.figure(figsize=(12,6))
+        ax = sns.barplot(y=list(self._cutflow.keys()), x=list(self._cutflow.values()), orient='y', errorbar=None)
+        ax.bar_label(ax.containers[0], fontsize=9)
+        ax.margins(x=0.2)
+        plt.xlabel('sum of weights')
+        plt.ylabel('cut')
+        plt.title(f'cutflow_{self._sfx}')
+
+        fname=f'cutflow_{self._sfx}.png'
+        plt.savefig(fname=fname, bbox_inches='tight', dpi=120)
+        print('{}INFO: a cutflow figure has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
+        plt.close('all')
+        return
 
     def stackHistos(self, analyzer):
         '''Stack and plot histograms.
@@ -555,7 +581,7 @@ class JPsiCCAnalyzer:
             case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
             case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
         self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT)
-        self._loaders[SAMP].readSnapshot(filename, treename)
+        self._loaders[SAMP].readSnapshot(filename, treename, read_pkl=True)
         if sample_name: self._loaders[SAMP].selectSampleRDF(sample_name)
 
     def stackMultiHistos(self, draw_indiv=False, keys=[], user_sfx=''):
@@ -689,34 +715,40 @@ if __name__=='__main__':
             mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
             mcbkg.defineColumnsRDF()
             mcbkg.snapshotRDF()
+            mcbkg.makeCutFlowPlot()
 
         case 'databkg':
             databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
             databkg.createDataRDF('event_spec_data_bkg_skim.json')
             databkg.defineColumnsRDF()
             databkg.snapshotRDF()
+            databkg.makeCutFlowPlot()
 
         case 'mcsig':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
+            mcsig.makeCutFlowPlot()
         
         case 'allsnap':
             mcbkg = JPsiCCLoader('MC_BKG', 2018, '202406', 'GF')
             mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
             mcbkg.defineColumnsRDF()
             mcbkg.snapshotRDF()
+            mcbkg.makeCutFlowPlot()
             
             databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
             databkg.createDataRDF('event_spec_data_bkg_skim.json')
             databkg.defineColumnsRDF()
             databkg.snapshotRDF()
+            databkg.makeCutFlowPlot()
             
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
+            mcsig.makeCutFlowPlot()
 
         case 'gen':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
@@ -728,12 +760,12 @@ if __name__=='__main__':
             else: use_weight, draw_indiv = True, True
             
             an = JPsiCCAnalyzer(2018, '202406', 'GF', weights=use_weight)
-            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240719.root',
+            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240730.root',
                                 sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
-            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240719.root',
+            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240730.root',
                                 sample_name='JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
-            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240719.root')
-            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202406_20240719.root')
+            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240730.root')
+            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202406_20240730.root')
 
             if preset != 'cut': an.stackMultiHistos(draw_indiv=draw_indiv)
             else:
