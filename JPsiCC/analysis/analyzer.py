@@ -5,14 +5,12 @@ analyzer
 JPsiCC analysis-specific analyzer
 '''
 
-from kytools import jsonreader
-from datetime import date
+from kytools import jsonreader, rootpdf
 import rdfdefines
-import os, json
+from datetime import date
+import os, pickle
 import ROOT
 
-# Disable multithreading for now
-# ROOT.DisableImplicitMT()
 ROOT.EnableImplicitMT()
 
 class JPsiCCLoader:
@@ -21,7 +19,7 @@ class JPsiCCLoader:
     Useful for loading one sample at a time, or for stacking histograms.
 
     Args:
-        SAMP (str): Either one of the following three options.
+        SAMP (str): Either one of the following options.
             'DATA_BKG', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
@@ -48,13 +46,14 @@ class JPsiCCLoader:
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
         self.SAMPLE, self.YEAR, self.VERSION, self.CAT = SAMP, YEAR, VERS, CAT
-        self._weights = weights
         self.SAMPLENAME = f'{self.SAMPLE}'
+        self._weights = weights # bool
 
         self._branches = []   # TBranches to take RDF snapshot of
         self._rdf = None      # Placeholder for RDF
         self._hists = dict()  # Dictionary of histogram objects
         self._models = dict() # Dictionary of histogram models
+        self._cutflow = dict() # Dictionary of cut flow ({str: float})
 
         today = date.today()
         self._date = f'{today.year}{today.month:02}{today.day:02}'
@@ -134,7 +133,7 @@ class JPsiCCLoader:
                 raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d
 
-    def plot_hists(self, hist_dict, draw=True, scaleSIG=1.):
+    def plot_hists(self, hist_dict, draw=True, scaleSIG=1., user_sfx=''):
         '''Plot histograms from dictionary of definitions.
 
         Args:
@@ -143,13 +142,15 @@ class JPsiCCLoader:
                 Defaults to True.
             scaleSIG (float, optional): Scale factor for the signal histogram.
                 Defaults to 1.
+            user_sfx (str, optional): Suffix to add to the names of the files.
+                Defaults to ''.
 
         Returns:
             (None)
         '''
         for key, hdef in hist_dict.items():
             # Create Histo1D
-            hname = f'{hdef["name"]}_{self._sfx}'
+            hname = f'{hdef["name"]}_{self._sfx}{"_" if user_sfx else ""}{user_sfx}'
             model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
             if draw: ROOT.gStyle.SetOptStat('eimruo')
             if self._weights: histo1d = self._rdf.Histo1D(model1d, hdef['name'], 'w')
@@ -188,10 +189,9 @@ class JPsiCCLoader:
         '''
         if not self._DATA:
             raise Exception('Please try again for data.')
-        rdf_events = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
-        rdf_events, br1 = rdfdefines.rdf_defSAMPLE_meta(rdf_events)
-        self._rdf, br2 = rdfdefines.rdf_def_weights(None, rdf_events, data=self._DATA)
-        self._branches = self._branches + br1 + br2
+        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
+        self._rdf, self._branches = rdfdefines.rdf_def_sample_meta(self._rdf, self._branches)
+        self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(None, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
     
     def createWeightedRDF(self, run_spec_json, event_spec_json):
@@ -207,11 +207,10 @@ class JPsiCCLoader:
             (None)
         '''
         rdf_runs = jsonreader.get_rdf_from_json_spec(self._anpath, run_spec_json)
-        rdf_events = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
-        rdf_runs, _ = rdfdefines.rdf_defSAMPLE_meta(rdf_runs)
-        rdf_events, br1 = rdfdefines.rdf_defSAMPLE_meta(rdf_events)
-        self._rdf, br2 = rdfdefines.rdf_def_weights(rdf_runs, rdf_events, data=self._DATA)
-        self._branches = self._branches + br1 + br2
+        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
+        rdf_runs, _ = rdfdefines.rdf_def_sample_meta(rdf_runs)
+        self._rdf, self._branches = rdfdefines.rdf_def_sample_meta(self._rdf, self._branches)
+        self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(rdf_runs, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
 
     def defineColumnsRDF(self):
@@ -227,18 +226,16 @@ class JPsiCCLoader:
         '''
         match self.CAT:
             case 'GF':
-                new_rdf, br1 = rdfdefines.rdf_filter_triggers(self._rdf, self.CAT, self.YEAR)
-                new_rdf, br2 = rdfdefines.rdf_def_jpsi(new_rdf)
-                new_rdf, br3 = rdfdefines.rdf_def_muons(new_rdf)
-                new_rdf, br4 = rdfdefines.rdf_def_vertex(new_rdf)
-                new_rdf, br5 = rdfdefines.rdf_def_jets(new_rdf, self.CAT, self.YEAR, data=self._DATA)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_filter_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA)
                 if self.SAMPLE=='MC_SIG':
-                    new_rdf, br_gen = rdfdefines.rdf_def_genpart(new_rdf)
-                    self._branches += br_gen
-                self._branches = self._branches + br1 + br2 + br3 + br4 + br5
-            case _:
-                new_rdf = self._rdf
-        self._rdf = new_rdf
+                    self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
+                if not self._DATA:
+                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow)
+            case _: pass
         return
     
     def simpleCut(self, cut):
@@ -251,6 +248,7 @@ class JPsiCCLoader:
             (None)
         '''
         self._rdf = self._rdf.Filter(cut)
+        self._cutflow = rdfdefines.add_cut_flow(self._cutflow, cut, self._rdf.Sum('w').GetValue())
     
     def selectSampleRDF(self, sample_name):
         '''Select sample name in RDF.
@@ -280,7 +278,7 @@ class JPsiCCLoader:
         '''
         return self._rdf
 
-    def snapshotRDF(self, name=''):
+    def snapshotRDF(self, name='', make_pkl=True):
         '''Create a snapshot of the RDF.
 
         Outputs a file whose name is printed in the terminal.
@@ -288,6 +286,10 @@ class JPsiCCLoader:
         Args:
             name (str, optional): Name of the snapshot to create.
                 Defaults to ''. If '', then the snapshot name will be determined automatically.
+            make_pkl (bool, optional): Whether to save a pickle file.
+                If True, a file with the extension .pkl and same name/suffix as the snapshot .root file
+                will be created. This will contain the self._cutflow dictionary.
+                Defaults to True.
 
         Returns:
             (None)
@@ -296,22 +298,34 @@ class JPsiCCLoader:
         else: fname = name
         self._rdf.Snapshot('Events', fname, self._branches)
         print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
+        if make_pkl:
+            pklname = f'{fname.rstrip(".root")}.pkl'
+            with open(pklname, 'wb') as f:
+                pickle.dump(self._cutflow, f)
+            print('{}INFO: a pickle has been created. >> {} {}'.format('\033[1;33m', pklname, '\033[0m'))
+        print(self._cutflow)
         return
     
-    def readSnapshot(self, filename, treename='Events'):
+    def readSnapshot(self, filename, treename='Events', make_pkl=True):
         '''Retrieve RDF from a saved snapshot ROOT file.
 
         Args:
             filename (str): Name of the snapshot ROOT file.
-            treename (str, option): Name of the TTree in the ROOT file.
+            treename (str, optional): Name of the TTree in the ROOT file.
+                Defaults to 'Events'.
+            make_pkl (bool, optional): Whether to read the corresponding pickle as well.
 
         Returns:
             (None)
         '''
         self._rdf = ROOT.RDataFrame(treename, filename)
+        if make_pkl:
+            pklname = f'{filename.rstrip(".root")}.pkl'
+            with open(pklname, 'rb') as f:
+                self._cutflow = pickle.load(f)
         return
 
-    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], scaleSIG=1.):
+    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], scaleSIG=1., user_sfx=''):
         '''Make histograms from the internal RDF.
 
         If 'plot' is True, outputs histograms in the 'plots' directory. Otherwise,
@@ -329,6 +343,8 @@ class JPsiCCLoader:
                 Defaults to [].
             scaleSIG (float, optional): Scale factor for the signal histogram.
                 Defaults to 1.
+            user_sfx (str, optional): Suffix to add to the names of the files.
+                Defaults to ''.
 
         Returns:
             (None) or hist_dict (dict)
@@ -343,11 +359,12 @@ class JPsiCCLoader:
                 hist_dict.update(hist_defs['Jpsi'])
                 hist_dict.update(hist_defs['muon'])
                 hist_dict.update(hist_defs['vertex'])
+                hist_dict.update(hist_defs['higgs'])
                 if genplots: hist_dict.update(hist_defs['gen'])
                 # self.plot_hists(hist_defs['jet'])
             case _: pass
         if keys: hist_dict = {key: val for key, val in hist_dict.items() if key in keys}
-        if plot: self.plot_hists(hist_dict, draw=draw, scaleSIG=scaleSIG)
+        if plot: self.plot_hists(hist_dict, draw=draw, scaleSIG=scaleSIG, user_sfx=user_sfx)
         else: return hist_dict
     
     def retrieveHisto(self, key):
@@ -570,7 +587,7 @@ class JPsiCCAnalyzer:
         hist_dict = mcsig.makeHistos(plot=False, draw=False, keys=keys)
 
         for samp in samples:
-            self._loaders[samp].plot_hists(hist_dict, draw=draw_indiv)
+            self._loaders[samp].plot_hists(hist_dict, draw=draw_indiv, user_sfx=user_sfx)
         
         ROOT.gStyle.SetOptStat(0)
         for key, hdef in hist_dict.items():
@@ -593,28 +610,31 @@ class JPsiCCAnalyzer:
             mcbkg_norm, mcbkg_max = 0., 0.
             for loader in mcbkgs:
                 h = loader.retrieveHisto(key)
-                if h is None: continue
-                h, mcbkg_d_opt = self.__set_hist_style(h, loader.SAMPLE)
-                mcbkg_norm += h.Integral()
-                mcbkg_max += h.GetMaximum()
-                hs.Add(h.GetPtr(), mcbkg_d_opt)
-                legend.AddEntry(h.GetPtr(), f'{loader.SAMPLENAME} ({h.Integral():.2E})', 'F')
+                h.SetStats(False)
+                if h:
+                    h, mcbkg_d_opt = self.__set_hist_style(h, loader.SAMPLE)
+                    mcbkg_norm += h.Integral()
+                    mcbkg_max += h.GetMaximum()
+                    hs.Add(h.GetPtr(), mcbkg_d_opt)
+                    legend.AddEntry(h.GetPtr(), f'{loader.SAMPLENAME} ({h.Integral():.2E})', 'F')
             hs.Draw()
 
             # Draw data
             data_hist = databkg.retrieveHisto(key)
-            if data_hist is None: continue
-            data_hist, databkg_d_opt = self.__set_hist_style(data_hist, databkg.SAMPLE)
-            data_hist.Draw(databkg_d_opt)
-            legend.AddEntry(data_hist.GetPtr(), f'{databkg.SAMPLENAME} ({data_hist.Integral():.2E})', 'P')
+            if data_hist:
+                data_hist.SetStats(False)
+                data_hist, databkg_d_opt = self.__set_hist_style(data_hist, databkg.SAMPLE)
+                data_hist.Draw(databkg_d_opt)
+                legend.AddEntry(data_hist.GetPtr(), f'{databkg.SAMPLENAME} ({data_hist.Integral():.2E})', 'P')
 
             # Draw signal
             sig_hist = mcsig.retrieveHisto(key)
-            if sig_hist is None: continue
-            sig_hist, mcsig_d_opt = self.__set_hist_style(sig_hist, mcsig.SAMPLE)
-            sig_hist.Scale(data_hist.Integral()/sig_hist.Integral()) # scale sig hist
-            sig_hist.Draw(mcsig_d_opt)
-            legend.AddEntry(sig_hist.GetPtr(), f'{mcsig.SAMPLENAME} ({sig_hist.Integral():.2E})', 'L')
+            if sig_hist:
+                sig_hist.SetStats(False)
+                sig_hist, mcsig_d_opt = self.__set_hist_style(sig_hist, mcsig.SAMPLE)
+                sig_hist.Scale(data_hist.Integral()/sig_hist.Integral()) # scale sig hist
+                sig_hist.Draw(mcsig_d_opt)
+                legend.AddEntry(sig_hist.GetPtr(), f'{mcsig.SAMPLENAME} ({sig_hist.Integral():.2E})', 'L')
 
             # Draw histograms
             hist_max_vals = [mcbkg_max, data_hist.GetMaximum(), sig_hist.GetMaximum()]
@@ -634,25 +654,34 @@ class JPsiCCAnalyzer:
             print(f'MCBKG integral: {mcbkg_norm:.3f}, DATABKG integral: {data_hist.Integral():.3f}')
         return
 
-    def select(self, cut, draw=False):
-        '''
+    def simpleCut(self, cut):
+        '''Apply a selection to all the loaded samples. 
 
         Args:
-            cut (str):
-            draw (bool, optional): Whether to draw histograms.
-                Defaults to False.
+            cut (str): RDF expression for filtering based on selection.
+
+        Returns:
+            (None)
         '''
         for sample, loader in self._loaders.items():
             print(f'Applying cut {cut} to {sample}.')
-            loader.simpleCut(cut)
-        if draw:
-            return
+            loader.simpleCut(f'{cut}')
     
     def scanSelection(self, variable, scansize):
         pass
 
+    def fitSignal(self, key_var, template):
+        """Fit the signal RDF to a desired template.
+
+        Args:
+            key_var (str): Name of the variable to fit.
+            template (str): Template to use for fitting.
+        """
+        fit = rootpdf.FittingTool(YEAR=self.YEAR, CAT=self.CAT, VARNAME=key_var)
+        return
+
 if __name__=='__main__':
-    print('Choose preset (mcbkg, databkg, mcsig, allsnap, gen, allplots, noweight): ', end='')
+    print('Choose preset (mcbkg, databkg, mcsig, allsnap, gen, allplots, noweight, cut): ', end='')
     preset = input()
     match preset:
         case 'mcbkg':
@@ -694,16 +723,19 @@ if __name__=='__main__':
             mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240628.root')
             mcsig.makeHistos(genplots=True)
 
-        case 'allplots' | 'noweight':
+        case 'allplots' | 'noweight' | 'cut':
             if preset=='noweight': use_weight, draw_indiv = False, False
             else: use_weight, draw_indiv = True, True
             
             an = JPsiCCAnalyzer(2018, '202406', 'GF', weights=use_weight)
-            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240712.root',
+            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240719.root',
                                 sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
-            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240712.root',
+            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240719.root',
                                 sample_name='JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
-            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240710.root')
-            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202406_20240710.root')
+            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240719.root')
+            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202406_20240719.root')
 
-            an.stackMultiHistos(draw_indiv=draw_indiv, keys=['Jpsi_kin_mass'])
+            if preset != 'cut': an.stackMultiHistos(draw_indiv=draw_indiv)
+            else:
+                an.simpleCut('Jpsi_kin_pt[0]>32')
+                an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='jpsi_kin_pt>32')
