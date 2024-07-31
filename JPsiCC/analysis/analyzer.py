@@ -53,6 +53,7 @@ class JPsiCCLoader:
 
         self._branches = []   # TBranches to take RDF snapshot of
         self._rdf = None      # Placeholder for RDF
+        self._rdfbranches = [] # TBranches in the RDF
         self._hists = dict()  # Dictionary of histogram objects
         self._models = dict() # Dictionary of histogram models
         self._cutflow = dict() # Dictionary of cut flow ({str: float})
@@ -63,6 +64,7 @@ class JPsiCCLoader:
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
         self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}'
         if not weights: self._sfx += '_NOWEIGHT'
+        if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
 
         # Color scheme: http://arxiv.org/pdf/2107.02270
         self._orange = ROOT.kOrange + 1
@@ -240,17 +242,48 @@ class JPsiCCLoader:
             case _: pass
         return
     
-    def simpleCut(self, cut):
+    def cut(self, cut):
         '''Filter the internal RDF using the cut expression.
 
         Args:
             cut (str): String expression for the cut filter.
 
+        Raises:
+            Exception: If the cut cannot be applied.
+
         Returns:
             (None)
         '''
-        self._rdf = self._rdf.Filter(cut)
+        try: self._rdf = self._rdf.Filter(cut)
+        except Exception: raise Exception(f'The cut {cut} cannot be applied.')
         self._cutflow = rdfdefines.add_cut_flow(self._cutflow, cut, self._rdf.Sum('w').GetValue())
+    
+    def countNevents(self, cut='', weights=True):
+        '''Count the number of events in the range.
+
+        The cut which is applied does not affect the RDF stored in this class.
+
+        Args:
+            cut (str): String expression for the cut filter, which applies the range.
+                If '', no cut is applied.
+                Defaults to ''.
+            weights (bool, optional): Whether to use weights in this computation.
+                In order to use this, there must be a 'w' column in the RDF.
+                Defaults to True.
+
+        Raises:
+            Exception: If the cut cannot be applied.
+            KeyError: If the weight column named 'w' does not exist.
+
+        Returns:
+            nevents (float): Number of events in the range.
+        '''
+        if 'w' not in self._rdf.GetColumnNames(): raise KeyError('Weight column \'w\' does not exist in the RDF.')
+        try: tmp_rdf = self._rdf.Filter(cut)
+        except Exception: raise Exception(f'The cut {cut} cannot be applied.')
+        if weights: nevents = tmp_rdf.Sum('w').GetValue()
+        else: nevents = tmp_rdf.Count().GetValue()
+        return nevents
     
     def selectSampleRDF(self, sample_name):
         '''Select sample name in RDF.
@@ -299,6 +332,7 @@ class JPsiCCLoader:
         if name=='': fname = f'snapshot_{self._sfx}.root'
         else: fname = name
         self._rdf.Snapshot('Events', fname, self._branches)
+        if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         if make_pkl:
             pklname = f'{fname.rstrip(".root")}.pkl'
@@ -321,11 +355,30 @@ class JPsiCCLoader:
             (None)
         '''
         self._rdf = ROOT.RDataFrame(treename, filename)
+        if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         if read_pkl:
             pklname = f'{filename.rstrip(".root")}.pkl'
             with open(pklname, 'rb') as f:
                 self._cutflow = pickle.load(f)
         return
+
+    def getVarInfo(self, varname):
+        '''Get the information associated with a variable in the RDF.
+
+        Args:
+            varname (str): Name of the variable.
+
+        Returns:
+            stats (ROOT.TStatistic): TStatistic of the specified variable.
+            vartype (str): The type of the variable.
+
+        Raises:
+            KeyError: If the variable is not in the RDF.
+        '''
+        if varname not in self._rdf.GetColumnNames():
+            raise KeyError(f'The variable {varname} is not in the RDF.')
+        stats, vartype = self._rdf.Stats(varname), self._rdf.GetColumnType(varname)
+        return stats, vartype
 
     def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], scaleSIG=1., user_sfx=''):
         '''Make histograms from the internal RDF.
@@ -354,14 +407,13 @@ class JPsiCCLoader:
         hist_defs = jsonreader.get_object_from_json(anpath='JPsiCC',
                                                     jsonname='rdf_hists.json',
                                                     keys=['NANOAOD_to_RDF'])
-        if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
         hist_dict = dict()
         match self.CAT:
             case 'GF':
                 hist_dict.update(hist_defs['Jpsi'])
                 hist_dict.update(hist_defs['muon'])
                 hist_dict.update(hist_defs['vertex'])
-                hist_dict.update(hist_defs['higgs'])
+                if not self._DATA: hist_dict.update(hist_defs['higgs'])
                 if genplots: hist_dict.update(hist_defs['gen'])
                 # self.plot_hists(hist_defs['jet'])
             case _: pass
@@ -401,7 +453,7 @@ class JPsiCCLoader:
         plt.ylabel('cut')
         plt.title(f'cutflow_{self._sfx}')
 
-        fname=f'cutflow_{self._sfx}.png'
+        fname=os.path.join(self._plotsavedir, f'cutflow_{self._sfx}.png')
         plt.savefig(fname=fname, bbox_inches='tight', dpi=120)
         print('{}INFO: a cutflow figure has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         plt.close('all')
@@ -610,7 +662,7 @@ class JPsiCCAnalyzer:
         mcsig = self._loaders['MC_SIG']
         databkg = self._loaders['DATA_BKG']
 
-        hist_dict = mcsig.makeHistos(plot=False, draw=False, keys=keys)
+        hist_dict = databkg.makeHistos(plot=False, draw=False, keys=keys)
 
         for samp in samples:
             self._loaders[samp].plot_hists(hist_dict, draw=draw_indiv, user_sfx=user_sfx)
@@ -680,7 +732,27 @@ class JPsiCCAnalyzer:
             print(f'MCBKG integral: {mcbkg_norm:.3f}, DATABKG integral: {data_hist.Integral():.3f}')
         return
 
-    def simpleCut(self, cut):
+    def countNeventsPerSample(self, cut, weights=True):
+        '''Count the number of events in the range per sample.
+
+        The cut which is applied does not affect the RDF stored in this class.
+
+        Args:
+            cut (str): String expression for the cut filter, which applies the range.
+                If '', no cut is applied.
+                Defaults to ''.
+            weights (bool, optional): Whether to use weights in this computation.
+                In order to use this, there must be a 'w' column in the RDF.
+                Defaults to True.
+
+        Returns:
+            nevents (float): Number of events in the range.
+        '''
+        for sample, loader in self._loaders.items():
+            nevents = loader.countNevets(cut, weights)
+        return 
+
+    def applyCut(self, cut):
         '''Apply a selection to all the loaded samples. 
 
         Args:
@@ -691,9 +763,32 @@ class JPsiCCAnalyzer:
         '''
         for sample, loader in self._loaders.items():
             print(f'Applying cut {cut} to {sample}.')
-            loader.simpleCut(f'{cut}')
+            loader.cut(f'{cut}')
+
+    def scanCut(self, var, scantype):
+        '''Scan the cut over a variable.
+
+        Args:
+            var (str): Name of the variable to scan over.
+            scantype (str): Type of scanning. Options are the following.
+                'floor': applies a lower limit
+                'ceiling': applies an upper limit
+                'window': applies a window
+
+        Raises:
+            ValueError: If the given scantype is not one of the options.
+        '''
+        # stats, vartype = 
+        pass
     
-    def scanSelection(self, variable, scansize):
+    def scanMultiCut(self, varlist):
+        '''Scan a selection of variables.
+
+        Args:
+            varlist (list(str)): List of variables to scan over.
+        '''
+        # for var in varlist:
+        #     for sample
         pass
 
     def fitSignal(self, key_var, template):
@@ -719,13 +814,14 @@ if __name__=='__main__':
 
         case 'databkg':
             databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
-            databkg.createDataRDF('event_spec_data_bkg_skim.json')
-            databkg.defineColumnsRDF()
-            databkg.snapshotRDF()
+            # databkg.createDataRDF('event_spec_data_bkg_skim.json')
+            # databkg.defineColumnsRDF()
+            # databkg.snapshotRDF()
+            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202406_20240731.root')
             databkg.makeCutFlowPlot()
 
         case 'mcsig':
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
@@ -744,7 +840,7 @@ if __name__=='__main__':
             databkg.snapshotRDF()
             databkg.makeCutFlowPlot()
             
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
@@ -759,15 +855,15 @@ if __name__=='__main__':
             if preset=='noweight': use_weight, draw_indiv = False, False
             else: use_weight, draw_indiv = True, True
             
-            an = JPsiCCAnalyzer(2018, '202406', 'GF', weights=use_weight)
-            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240730.root',
+            an = JPsiCCAnalyzer(2018, '202407', 'GF', weights=use_weight)
+            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240731.root',
                                 sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
-            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240730.root',
+            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240731.root',
                                 sample_name='JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
-            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240730.root')
-            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202406_20240730.root')
+            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240731.root')
+            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202407_20240731.root')
 
             if preset != 'cut': an.stackMultiHistos(draw_indiv=draw_indiv)
             else:
-                an.simpleCut('Jpsi_kin_pt[0]>32')
-                an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='jpsi_kin_pt>32')
+                an.applyCut('trigger_user>0')
+                an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='trigger_user>0')

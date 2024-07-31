@@ -186,13 +186,19 @@ def rdf_def_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, filter=True)
             print(f'The following triggers are applied: {trigger}')
         case _:
             raise ValueError(f'Trigger does not exist for the combination of {CAT} and {YEAR}.')
-    try: new_rdf = rdf.Define('trigger', trigger)
-    except:
-        new_rdf = rdf
-        raise RuntimeWarning('Trigger column could not be defined.')
-    if filter: new_rdf = new_rdf.Filter('trigger>0')
-    cut_flow_dict = add_cut_flow(cut_flow_dict, 'trigger', new_rdf.Sum('w').GetValue())
-    branches += ['trigger']
+    try:
+        new_rdf = rdf.Define('trigger', trigger)
+        if filter:
+            new_rdf = new_rdf.Filter('trigger>0')
+            cut_flow_dict = add_cut_flow(cut_flow_dict, 'trigger', new_rdf.Sum('w').GetValue())
+        branches += ['trigger']
+    except Exception:
+        new_rdf = rdf.Define('trigger_user', trigger)
+        print('WARNING: a column named \'trigger\' could not be defined, so it is renamed to \'trigger_user\' instead.')
+        if filter:
+            new_rdf = new_rdf.Filter('trigger_user>0')
+            cut_flow_dict = add_cut_flow(cut_flow_dict, 'trigger_user', new_rdf.Sum('w').GetValue())
+        branches += ['trigger', 'trigger_user']
     return new_rdf, branches, cut_flow_dict
 
 def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}, filter=True):
