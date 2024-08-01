@@ -62,8 +62,7 @@ class JPsiCCLoader:
         self._date = f'{today.year}{today.month:02}{today.day:02}'
         self._anpath = 'JPsiCC'
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
-        self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}'
-        if not weights: self._sfx += '_NOWEIGHT'
+        self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
 
         # Color scheme: http://arxiv.org/pdf/2107.02270
@@ -242,21 +241,34 @@ class JPsiCCLoader:
             case _: pass
         return
     
-    def cut(self, cut):
+    def cut(self, cut, weights=True):
         '''Filter the internal RDF using the cut expression.
+
+        The internal self._cutflow object is updated when the cut is applied.
 
         Args:
             cut (str): String expression for the cut filter.
+            weights (bool, optional): Whether to use weights in the computation
+                of the cut flow and the number of events.
+                In order to use this, there must be a 'w' column in the RDF.
+                Defaults to True.
 
         Raises:
             Exception: If the cut cannot be applied.
+            KeyError: If the weights option is specified but a column named 'w' does not exist.
 
         Returns:
-            (None)
+            nevents (float): Number of events after the cut.
         '''
         try: self._rdf = self._rdf.Filter(cut)
         except Exception: raise Exception(f'The cut {cut} cannot be applied.')
-        self._cutflow = rdfdefines.add_cut_flow(self._cutflow, cut, self._rdf.Sum('w').GetValue())
+        if weights:
+            if 'w' not in self._rdf.GetColumnNames():
+                raise KeyError('Weight column \'w\' does not exist in the RDF.')
+            nevents = self._rdf.Sum('w').GetValue()
+        else: nevents = self._rdf.Count().GetValue()
+        self._cutflow = rdfdefines.add_cut_flow(self._cutflow, cut, nevents)
+        return nevents
     
     def countNevents(self, cut='', weights=True):
         '''Count the number of events in the range.
@@ -264,7 +276,7 @@ class JPsiCCLoader:
         The cut which is applied does not affect the RDF stored in this class.
 
         Args:
-            cut (str): String expression for the cut filter, which applies the range.
+            cut (str, optional): String expression for the cut filter, which applies the range.
                 If '', no cut is applied.
                 Defaults to ''.
             weights (bool, optional): Whether to use weights in this computation.
@@ -273,15 +285,17 @@ class JPsiCCLoader:
 
         Raises:
             Exception: If the cut cannot be applied.
-            KeyError: If the weight column named 'w' does not exist.
+            KeyError: If the weights option is specified but a column named 'w' does not exist.
 
         Returns:
             nevents (float): Number of events in the range.
         '''
-        if 'w' not in self._rdf.GetColumnNames(): raise KeyError('Weight column \'w\' does not exist in the RDF.')
         try: tmp_rdf = self._rdf.Filter(cut)
         except Exception: raise Exception(f'The cut {cut} cannot be applied.')
-        if weights: nevents = tmp_rdf.Sum('w').GetValue()
+        if weights:
+            if 'w' not in self._rdf.GetColumnNames():
+                raise KeyError('Weight column \'w\' does not exist in the RDF.')
+            nevents = tmp_rdf.Sum('w').GetValue()
         else: nevents = tmp_rdf.Count().GetValue()
         return nevents
     
@@ -312,6 +326,14 @@ class JPsiCCLoader:
             rdf (ROOT.RDataFrame): The retrieved RDF.
         '''
         return self._rdf
+    
+    def retrieveCutFlow(self):
+        '''Retrieve the internal cut flow dictionary.
+
+        Returns:
+            cutflow (dict): The retrieved cut flow dictionary.
+        '''
+        return self._cutflow
 
     def snapshotRDF(self, name='', make_pkl=True):
         '''Create a snapshot of the RDF.
@@ -453,7 +475,7 @@ class JPsiCCLoader:
         plt.ylabel('cut')
         plt.title(f'cutflow_{self._sfx}')
 
-        fname=os.path.join(self._plotsavedir, f'cutflow_{self._sfx}.png')
+        fname = os.path.join(self._plotsavedir, f'cutflow_{self._sfx}.png')
         plt.savefig(fname=fname, bbox_inches='tight', dpi=120)
         print('{}INFO: a cutflow figure has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         plt.close('all')
@@ -542,6 +564,7 @@ class JPsiCCAnalyzer:
         self.YEAR, self.VERSION, self.CAT = YEAR, VERS, CAT
         self._loaders = dict() # Placeholder for JPsiCCLoader
         self._weights = weights
+        self._selections = []
 
         # Color scheme: http://arxiv.org/pdf/2107.02270
         self._orange = ROOT.kOrange + 1
@@ -604,7 +627,7 @@ class JPsiCCAnalyzer:
                 raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d, draw_option
 
-    def readSnapshotSAMP(self, SAMP, filename, treename='Events', sample_name=''):
+    def readSnapshotSAMP(self, SAMP, filename, treename='Events', sample_name='', read_pkl=True):
         '''Create JPsiCCLoader from a saved snapshot ROOT file.
 
         Args:
@@ -616,6 +639,8 @@ class JPsiCCAnalyzer:
             sample (str, optional): Name of the sample to filter on. If '' provided,
                 it will use the entire events instead.
                 Defaults to ''.
+            read_pkl (bool, optional): Whether to read the corresponding pickle as well.
+                Defaults to True.            
 
         Raises:
             ValueError: If the string provided for SAMP is not among the options.
@@ -633,7 +658,7 @@ class JPsiCCAnalyzer:
             case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
             case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
         self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT)
-        self._loaders[SAMP].readSnapshot(filename, treename, read_pkl=True)
+        self._loaders[SAMP].readSnapshot(filename, treename, read_pkl=read_pkl)
         if sample_name: self._loaders[SAMP].selectSampleRDF(sample_name)
 
     def stackMultiHistos(self, draw_indiv=False, keys=[], user_sfx=''):
@@ -746,14 +771,17 @@ class JPsiCCAnalyzer:
                 Defaults to True.
 
         Returns:
-            nevents (float): Number of events in the range.
+            table_dict (float): Dictionary of the following format.
+                {'selection': cut, <sample 1>: <nevents>, ...}
         '''
+        table_dict = {'selection': cut}
         for sample, loader in self._loaders.items():
-            nevents = loader.countNevets(cut, weights)
-        return 
+            nevents = loader.countNevents(cut, weights)
+            table_dict[sample] = nevents
+        return table_dict
 
     def applyCut(self, cut):
-        '''Apply a selection to all the loaded samples. 
+        '''Quickly apply a selection to all the loaded samples. 
 
         Args:
             cut (str): RDF expression for filtering based on selection.
@@ -764,6 +792,81 @@ class JPsiCCAnalyzer:
         for sample, loader in self._loaders.items():
             print(f'Applying cut {cut} to {sample}.')
             loader.cut(f'{cut}')
+        return
+
+    def addCutOptions(self, cuts):
+        '''Does not apply the selections immediately, but saves them for later use.
+
+        Args:
+            cuts (str or list(str)): RDF expression or list of expressions.
+
+        Raises:
+            TypeError: If cuts is not str or list(str).
+        
+        Returns:
+            (None)
+        '''
+        if isinstance(cuts, str): self._selections.append(cuts)
+        elif isinstance(cuts, list) and all(isinstance(c, str) for c in cuts):
+            self._selections += cuts
+        else:
+            raise TypeError('The value provided for cuts is not str or list(str)')
+
+    def makeCutTable(self, modify=False, plot=True):
+        '''Make a table of the number of events after applying each cut stored.
+
+        Args:
+            modify (bool, optional): Whether to modify the original RDFs.
+                If False, each selection is applied independently from one another
+                and have no effect the original RDFs.
+                If True, the selections are applied sequentially.
+            plot (bool, optional): Whether to plot the resulting table.
+                Defaults to True.
+        
+        Returns:
+            table_pd (pandas.DataFrame): Object containing the tabulated nevents after each cut.
+        '''
+        import pandas as pd # won't be using this outside the function
+        from pandas.plotting import table
+        table_dict = {}
+        if not modify:
+            rows = [] # TODO: can't think of a more efficient way?
+        for cut in self._selections:
+            if modify:
+                self.applyCut(cut=cut)
+            else:
+                rows.append(self.countNeventsPerSample(cut=cut, weights=self._weights))
+        if modify:
+            for sample, loader in self._loaders.items():
+                cutflow = loader.retrieveCutFlow()
+                if not 'selection' in table_dict:
+                    table_dict['selection'] = list(cutflow)
+                table_dict[sample] = list(cutflow.values())
+        else:
+            table_dict = {k: [d[k] for d in rows] for k in rows[0]}
+        table_df = pd.DataFrame(data=table_dict)
+        print(table_dict)
+        if plot:
+            _, ax = plt.subplots()
+            ax.axis('off')
+            _ = table(ax, table_df, loc='center', cellLoc='center', colWidths=[.4]*len(table_df.index))
+            plt_title = f'cut_table_{"sequential" if modify else "individual"}_{self._sfx}.png'
+            plt_path = os.path.join(self._plotsavedir, plt_title)
+            plt.title(plt_title)
+            plt.savefig(plt_path, bbox_inches='tight', dpi=120)
+            print('{}INFO: a cut table figure has been created. >> {} {}'.format('\033[1;33m', plt_path, '\033[0m'))
+            plt.close('all')
+        return table_df
+
+    def makeCutFlowPlotAll(self):
+        '''Make a cut flow plot of all the loaders.
+        
+        Returns:
+            (None)
+        '''
+        for loader in self._loaders.values():
+            loader.makeCutFlowPlot()
+        return
 
     def scanCut(self, var, scantype):
         '''Scan the cut over a variable.
@@ -865,5 +968,19 @@ if __name__=='__main__':
 
             if preset != 'cut': an.stackMultiHistos(draw_indiv=draw_indiv)
             else:
-                an.applyCut('trigger_user>0')
-                an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='trigger_user>0')
+                an.addCutOptions('Jpsi_kin_pt[0]>30') # TODO: make function to detect & flatten RVec
+                # an.addCutOptions('Jpsi_kin_pt[0]>35')
+                # an.addCutOptions('Jpsi_kin_pt[0]>40')
+                # an.addCutOptions('Jpsi_kin_pt[0]>45')
+                # an.addCutOptions('Jpsi_kin_pt[0]>50')
+                an.addCutOptions('Jpsi_iso[0]>0.5')
+                # an.addCutOptions('Jpsi_iso[0]>0.6')
+                # an.addCutOptions('Jpsi_iso[0]>0.7')
+                # an.addCutOptions('Jpsi_iso[0]>0.8')
+                an.addCutOptions('Jpsi_kin_sipPV[0]<2')
+                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.75')
+                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.5')
+                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.25')
+                an.makeCutTable(modify=True, plot=True)
+                an.makeCutFlowPlotAll()
+                # an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='cut')
