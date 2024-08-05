@@ -1,10 +1,10 @@
 import setuptools
 setuptools.setup(name='kytools',
-version='0.0.4',
+version='1.0.0',
 description='K.Yoon\'s analysis tools',
 url='#',
 author='Kyungseop Yoon',
-install_requires=['uproot', 'pandas', 'numpy'],
+install_requires=['uproot', 'pandas', 'numpy', 'matplotlib'],
 author_email='kyoon@mit.edu',
 packages=setuptools.find_packages(),
 zip_safe=False)

@@ -11,7 +11,6 @@ def root_to_pandas(filename, treename, branches):
 
     Args:
         filename (str or list(str)): Name(s) of the ROOT file(s).
-        filename (list(str)): List containing names of the ROOT files.
         treename (str): Name of the TTree.
         branches (list(str)): List of the branches to convert.
 

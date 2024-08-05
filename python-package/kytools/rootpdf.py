@@ -34,14 +34,14 @@ class FittingTool:
         ValueError: If VARLOW is not smaller than VARHIGH.
     """
     def __init__(self, YEAR, CAT, VERS, VARNAME, VARTITLE, VARLOW, VARHIGH):
-        if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
-        if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
-        if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
-        if not type(VARNAME) is str: raise TypeError(f'VARNAME must be a string.')
-        if not type(VARTITLE) is str: raise TypeError(f'VARTITLE must be a string.')
-        if not isinstance(VARLOW, (int, float)): raise TypeError(f'VARLOW must be a float or int.')
-        if not isinstance(VARLOW, (int, float)): raise TypeError(f'VARHIGH must be a float or int.')
-        if not VARLOW < VARHIGH: raise ValueError(f'VARLOW must be smaller than VARHIGH.')
+        if not type(YEAR) is int: raise TypeError('YEAR must be an integer.')
+        if not type(CAT) is str: raise TypeError('CAT must be a string.')
+        if not type(VERS) is str: raise TypeError('VERS must be a string.')
+        if not type(VARNAME) is str: raise TypeError('VARNAME must be a string.')
+        if not type(VARTITLE) is str: raise TypeError('VARTITLE must be a string.')
+        if not isinstance(VARLOW, (int, float)): raise TypeError('VARLOW must be a float or int.')
+        if not isinstance(VARLOW, (int, float)): raise TypeError('VARHIGH must be a float or int.')
+        if not VARLOW < VARHIGH: raise ValueError('VARLOW must be smaller than VARHIGH.')
 
         self.YEAR, self.CAT, self.VERSION, self.VARNAME, self.VARTITLE, self.VARLOW, self.VARHIGH =\
             YEAR, CAT, VERS, VARNAME, VARTITLE, VARLOW, VARHIGH
@@ -270,15 +270,17 @@ class FittingTool:
             raise TypeError('Please provide a list(str) for mask.')
         xframe = self.x.frame(Name=self.VARNAME, Title=self.VARTITLE, Bins=int(self.VARHIGH-self.VARLOW))
         for key, dat in self._data.items():
-            if any(mask_item in key for mask_item in mask): continue
-            if 'MC_BKG0' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=ROOT.kWhite)
-            if 'MC_BKG1' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._red)
-            if 'MC_BKG2' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._orange)
-            if 'MC_BKG3' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._gray)
-            if 'DATA' in key: dat.plotOn(xframe, DrawOption='P')
+            if any(mask_item in key for mask_item in mask):
+                continue
+                # dat.plotOn(xframe, DataError=None, XErrorSize=0, FillColor=ROOT.kWhite, LineColor=ROOT.kWhite, MarkerColor=ROOT.kWhite, MoveToBack=True)
+            elif 'MC_BKG0' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=ROOT.kWhite)
+            elif 'MC_BKG1' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._red)
+            elif 'MC_BKG2' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._orange)
+            elif 'MC_BKG3' in key: dat.plotOn(xframe, DrawOption='B', DataError=None, XErrorSize=0, FillColor=self._gray)
+            elif 'DATA' in key: dat.plotOn(xframe, DrawOption='P')
         for key, pdf in self._pdfs.items():
             if any(mask_item in key for mask_item in mask): continue
-            if 'bkg' in key: pdf.plotOn(xframe, LineColor=ROOT.kBlack, LineStyle=ROOT.kDotted)
+            if 'bkg' in key: pdf.plotOn(xframe, LineColor=ROOT.kBlack, LineStyle=ROOT.kSolid)
             if 'sig' in key: pdf.plotOn(xframe, LineColor=self._blue)
         #TODO: fwhm
 
