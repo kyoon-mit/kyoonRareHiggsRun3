@@ -136,15 +136,20 @@ class JPsiCCLoader:
                 raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d
 
-    def plot_hists(self, hist_dict, draw=True, scaleSIG=1., user_sfx=''):
+    def plot_hists(self, hist_dict, draw=True, normSIG=True, cdf=False, user_sfx=''):
         '''Plot histograms from dictionary of definitions.
 
         Args:
             hist_dict (dict): Dictionary of histogram definitions.
             draw (bool, optional): Whether to draw histogram.
                 Defaults to True.
-            scaleSIG (float, optional): Scale factor for the signal histogram.
-                Defaults to 1.
+            normSIG (bool, optional): Whether to normalize the signal histogram to 1.
+                This normalization applies to the events that are within the x axis range.
+                Defaults to True.
+            cdf (bool, optional): Whether to draw a CDF of each histogram.
+                If True, additional histograms will be created with keys ending
+                with the suffix, '_cdf'.
+                Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
 
@@ -161,7 +166,8 @@ class JPsiCCLoader:
 
             # Set color
             histo1d = self.__set_hist_style(histo1d, self.SAMPLE)
-            if self._MODE=='SIG': histo1d.Scale(scaleSIG)
+            if self._MODE=='SIG' and normSIG:
+                histo1d.Scale(1/histo1d.Integral())
 
             # Save histogram
             histo1d.SetDirectory(0)
@@ -169,11 +175,22 @@ class JPsiCCLoader:
             self._models[key] = model1d
             print(f'INFO: Made histogram {key} for {self.SAMPLE}.')
 
+            # Add CDF
+            if cdf:
+                histo1d_cdf = histo1d.GetCumulative()
+                model1d_cdf = (f'{hname}_cdf', f'{hdef["title"]}_cdf', hdef['bin'], hdef['xmin'], hdef['xmax'])
+                self._hists[f'{key}_cdf'] = histo1d_cdf
+                self._models[f'{key}_cdf'] = model1d_cdf
+
             # Draw histogram
             if draw:
                 c = self.__draw_hist(histo1d=histo1d, model1d=model1d, draw_option=self._draw_option)
                 c.SaveAs(os.path.join(self._plotsavedir, f'{hname}.png'))
+                c.Close()
                 ROOT.gStyle.SetOptStat(0)
+                if cdf:
+                    c = self.__draw_hist(histo1d=histo1d_cdf, model1d=model1d_cdf, draw_option=self._draw_option)
+                    c.SaveAs(os.path.join(self._plotsavedir, f'{hname}_cdf.png'))
         return
     
     def createDataRDF(self, event_spec_json):
@@ -229,15 +246,15 @@ class JPsiCCLoader:
         '''
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=True)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=False)
                 if self.SAMPLE=='MC_SIG':
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
-                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow)
+                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=False)
             case _: pass
         return
     
@@ -290,10 +307,12 @@ class JPsiCCLoader:
         Returns:
             nevents (float): Number of events in the range.
         '''
-        try: tmp_rdf = self._rdf.Filter(cut)
-        except Exception: raise Exception(f'The cut {cut} cannot be applied.')
+        if cut:
+            try: tmp_rdf = self._rdf.Filter(cut)
+            except Exception: raise Exception(f'The cut {cut} cannot be applied.')
+        else: tmp_rdf = self._rdf
         if weights:
-            if 'w' not in self._rdf.GetColumnNames():
+            if 'w' not in tmp_rdf.GetColumnNames():
                 raise KeyError('Weight column \'w\' does not exist in the RDF.')
             nevents = tmp_rdf.Sum('w').GetValue()
         else: nevents = tmp_rdf.Count().GetValue()
@@ -402,7 +421,7 @@ class JPsiCCLoader:
         stats, vartype = self._rdf.Stats(varname), self._rdf.GetColumnType(varname)
         return stats, vartype
 
-    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], scaleSIG=1., user_sfx=''):
+    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], normSIG=True, cdf=False, user_sfx=''):
         '''Make histograms from the internal RDF.
 
         If 'plot' is True, outputs histograms in the 'plots' directory. Otherwise,
@@ -418,8 +437,13 @@ class JPsiCCLoader:
             keys (list(str), optional): Specify the keys to draw. If the list is
                 empty, it will draw every histogram.
                 Defaults to [].
-            scaleSIG (float, optional): Scale factor for the signal histogram.
-                Defaults to 1.
+            normSIG (bool, optional): Whether to normalize the signal histogram to 1.
+                This normalization applies to the events that are within the x axis range.
+                Defaults to True.
+            cdf (bool, optional): Whether to draw a CDF of each histogram.
+                If True, additional histograms will be created with keys ending
+                with the suffix, '_cdf'.
+                Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
 
@@ -440,7 +464,7 @@ class JPsiCCLoader:
                 # self.plot_hists(hist_defs['jet'])
             case _: pass
         if keys: hist_dict = {key: val for key, val in hist_dict.items() if key in keys}
-        if plot: self.plot_hists(hist_dict, draw=draw, scaleSIG=scaleSIG, user_sfx=user_sfx)
+        if plot: self.plot_hists(hist_dict, draw=draw, normSIG=normSIG, cdf=cdf, user_sfx=user_sfx)
         else: return hist_dict
     
     def retrieveHisto(self, key):
@@ -698,7 +722,7 @@ class JPsiCCAnalyzer:
             c_hstack = ROOT.TCanvas()
 
             # Set legend
-            legend = ROOT.TLegend(0.64, 0.78, 0.95, 0.95)
+            legend = ROOT.TLegend(0.64, 0.78, 0.95, 0.94)
             legend.SetBorderSize(1)
             legend.SetFillColorAlpha(ROOT.kWhite, 0.8)
             legend.SetTextSize(0.024)
@@ -828,30 +852,32 @@ class JPsiCCAnalyzer:
         '''
         import pandas as pd # won't be using this outside the function
         from pandas.plotting import table
-        table_dict = {}
-        if not modify:
-            rows = [] # TODO: can't think of a more efficient way?
+        table_dict = {'selection': 'None'}
+        table_dict = self.countNeventsPerSample(cut='', weights=self._weights)
+        table_df = pd.DataFrame(data=table_dict, index=[0])
         for cut in self._selections:
             if modify:
                 self.applyCut(cut=cut)
             else:
-                rows.append(self.countNeventsPerSample(cut=cut, weights=self._weights))
+                nevents = self.countNeventsPerSample(cut=cut, weights=self._weights)
+                nevents['selection'] = cut
+                table_df = pd.concat([table_df, pd.DataFrame(data=nevents, index=[0])], ignore_index=True)
         if modify:
-            for sample, loader in self._loaders.items():
+            new_rows = {}
+            for sample, loader in self._loaders.items(): # TODO: can't you be more efficient?
                 cutflow = loader.retrieveCutFlow()
-                if not 'selection' in table_dict:
-                    table_dict['selection'] = list(cutflow)
-                table_dict[sample] = list(cutflow.values())
-        else:
-            table_dict = {k: [d[k] for d in rows] for k in rows[0]}
-        table_df = pd.DataFrame(data=table_dict)
-        print(table_dict)
+                if not 'selection' in new_rows:
+                    new_rows['selection'] = list(cutflow)
+                new_rows[sample] = list(cutflow.values())
+            table_df = pd.concat([table_df, nevents], ignore_index=True)
+        for sample in self._loaders:
+            table_df[f'{sample}_ratio'] = table_df[sample]/table_df[sample].iloc[0]
         if plot:
             _, ax = plt.subplots()
             ax.axis('off')
             _ = table(ax, table_df, loc='center', cellLoc='center', colWidths=[.4]*len(table_df.index))
-            plt_title = f'cut_table_{"sequential" if modify else "individual"}_{self._sfx}.png'
-            plt_path = os.path.join(self._plotsavedir, plt_title)
+            plt_title = f'cut_table_{"sequential" if modify else "individual"}_{self._sfx}'
+            plt_path = f'{os.path.join(self._plotsavedir, plt_title)}.png'
             plt.title(plt_title)
             plt.savefig(plt_path, bbox_inches='tight', dpi=120)
             print('{}INFO: a cut table figure has been created. >> {} {}'.format('\033[1;33m', plt_path, '\033[0m'))
@@ -917,17 +943,18 @@ if __name__=='__main__':
 
         case 'databkg':
             databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
-            # databkg.createDataRDF('event_spec_data_bkg_skim.json')
-            # databkg.defineColumnsRDF()
-            # databkg.snapshotRDF()
-            databkg.readSnapshot('snapshot_DATA_BKG_2018_GF_v202406_20240731.root')
+            databkg.createDataRDF('event_spec_data_bkg_skim.json')
+            databkg.defineColumnsRDF()
+            databkg.snapshotRDF()
             databkg.makeCutFlowPlot()
 
         case 'mcsig':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
-            mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
-            mcsig.defineColumnsRDF()
-            mcsig.snapshotRDF()
+            # mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
+            # mcsig.defineColumnsRDF()
+            # mcsig.snapshotRDF()
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
+            mcsig.makeHistos(genplots=True, cdf=True)
             mcsig.makeCutFlowPlot()
         
         case 'allsnap':
@@ -950,37 +977,43 @@ if __name__=='__main__':
             mcsig.makeCutFlowPlot()
 
         case 'gen':
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202406', 'GF')
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202406_20240628.root')
-            mcsig.makeHistos(genplots=True)
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
+            mcsig.makeHistos(genplots=True, user_sfx='', normSIG=True)
 
         case 'allplots' | 'noweight' | 'cut':
             if preset=='noweight': use_weight, draw_indiv = False, False
             else: use_weight, draw_indiv = True, True
             
             an = JPsiCCAnalyzer(2018, '202407', 'GF', weights=use_weight)
-            an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240731.root',
-                                sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
-            an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240731.root',
-                                sample_name='JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
-            an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240731.root')
-            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202407_20240731.root')
+            # an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240802_WEIGHT.root',
+            #                     sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
+            # an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240802_WEIGHT.root',
+            #                     sample_name='JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2+MINIAODSIM')
+            # an.readSnapshotSAMP('DATA_BKG', 'snapshot_DATA_BKG_2018_GF_v202406_20240802_WEIGHT.root')
+            an.readSnapshotSAMP('MC_SIG', 'snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
 
             if preset != 'cut': an.stackMultiHistos(draw_indiv=draw_indiv)
             else:
-                an.addCutOptions('Jpsi_kin_pt[0]>30') # TODO: make function to detect & flatten RVec
-                # an.addCutOptions('Jpsi_kin_pt[0]>35')
-                # an.addCutOptions('Jpsi_kin_pt[0]>40')
-                # an.addCutOptions('Jpsi_kin_pt[0]>45')
-                # an.addCutOptions('Jpsi_kin_pt[0]>50')
+                an.addCutOptions('Jpsi_kin_pt[0]>5') # TODO: make function to detect & flatten RVec
+                an.addCutOptions('Jpsi_kin_pt[0]>10')
+                an.addCutOptions('Jpsi_kin_pt[0]>15')
+                an.addCutOptions('Jpsi_kin_pt[0]>20')
+                an.addCutOptions('Jpsi_kin_pt[0]>25')
+                an.addCutOptions('Jpsi_kin_pt[0]>30')
+                an.addCutOptions('Jpsi_kin_pt[0]>30')
+                an.addCutOptions('Jpsi_kin_pt[0]>35')
+                an.addCutOptions('Jpsi_kin_pt[0]>40')
+                an.addCutOptions('Jpsi_kin_pt[0]>45')
+                an.addCutOptions('Jpsi_kin_pt[0]>50')
                 an.addCutOptions('Jpsi_iso[0]>0.5')
-                # an.addCutOptions('Jpsi_iso[0]>0.6')
-                # an.addCutOptions('Jpsi_iso[0]>0.7')
-                # an.addCutOptions('Jpsi_iso[0]>0.8')
+                an.addCutOptions('Jpsi_iso[0]>0.6')
+                an.addCutOptions('Jpsi_iso[0]>0.7')
+                an.addCutOptions('Jpsi_iso[0]>0.8')
                 an.addCutOptions('Jpsi_kin_sipPV[0]<2')
-                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.75')
-                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.5')
-                # an.addCutOptions('Jpsi_kin_sipPV[0]<1.25')
-                an.makeCutTable(modify=True, plot=True)
+                an.addCutOptions('Jpsi_kin_sipPV[0]<1.75')
+                an.addCutOptions('Jpsi_kin_sipPV[0]<1.5')
+                an.addCutOptions('Jpsi_kin_sipPV[0]<1.25')
+                an.makeCutTable(modify=False, plot=True)
                 an.makeCutFlowPlotAll()
                 # an.stackMultiHistos(draw_indiv=draw_indiv, user_sfx='cut')

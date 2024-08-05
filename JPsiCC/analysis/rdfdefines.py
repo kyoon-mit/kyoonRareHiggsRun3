@@ -10,6 +10,25 @@ from datetime import datetime
 
 ROOT.EnableImplicitMT
 
+def filter_rdf(rdf, cut_flow_dict, cut, description, filter=True):
+    '''Filter an RDF.
+
+    Args:
+        rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+        cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
+        cut (str): The filter expression.
+        description (str): The description of this filter.
+        filter (bool, optional): Whether to filter.
+            Defaults to True.
+
+    Returns:
+        new_rdf (ROOT.RDataFrame): Modified RDF.
+        cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
+    '''
+    new_rdf = rdf.Filter(cut, description) if filter else rdf
+    if filter: cut_flow_dict = add_cut_flow(cut_flow_dict, cut, new_rdf.Sum('w').GetValue())
+    return new_rdf, cut_flow_dict
+
 def load_functions(mode='reco'):
     '''Load user-defined functions.
 
@@ -218,9 +237,9 @@ def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}, filter=True):
         branches (list(str)): Updated list of TBranches.
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
-    if filter: new_rdf = rdf.Filter('nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.')
-    else: new_rdf = rdf
-    cut_flow_dict = add_cut_flow(cut_flow_dict, 'nJpsi>0', new_rdf.Sum('w').GetValue())
+    load_functions('reco')
+    new_rdf, cut_flow_dict = filter_rdf(rdf, cut_flow_dict, 'nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.', filter=filter)
+    new_rdf = new_rdf.Define('Jpsi_muon1_muon2_dR', 'deltaR(Jpsi_muon1_eta[0], Jpsi_muon1_phi[0], Jpsi_muon2_eta[0], Jpsi_muon2_phi[0])')
     branches += get_rdf_branches('Jpsi')
     return new_rdf, branches, cut_flow_dict
 
