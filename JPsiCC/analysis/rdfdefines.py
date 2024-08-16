@@ -427,21 +427,21 @@ def rdf_def_genpart(rdf, branches=[]): # TODO: rename branches so that they star
     # Find Higgs
     new_rdf = (rdf.Define('GenPart_Higgs_idx',
                         'HiggsIdx(GenPart_pdgId, GenPart_genPartIdxMother)')
-                .Define('Higgs_energy',
+                .Define('gen_Higgs_energy',
                         'GenPart_energy[GenPart_Higgs_idx]')
-                .Define('Higgs_eta',
+                .Define('gen_Higgs_eta',
                         'GenPart_eta[GenPart_Higgs_idx]')
-                .Define('Higgs_mass',
+                .Define('gen_Higgs_mass',
                         'GenPart_mass[GenPart_Higgs_idx]')
-                .Define('Higgs_phi',
+                .Define('gen_Higgs_phi',
                         'GenPart_phi[GenPart_Higgs_idx]')
-                .Define('Higgs_pt',
+                .Define('gen_Higgs_pt',
                         'GenPart_pt[GenPart_Higgs_idx]')
-                .Define('Higgs_px',
+                .Define('gen_Higgs_px',
                         'GenPart_px[GenPart_Higgs_idx]')
-                .Define('Higgs_py',
+                .Define('gen_Higgs_py',
                         'GenPart_py[GenPart_Higgs_idx]')
-                .Define('Higgs_pz',
+                .Define('gen_Higgs_pz',
                         'GenPart_pz[GenPart_Higgs_idx]')
                 # Find Higgs Daughter
                 .Define('GenPart_HiggsDaughters_pdgId',
@@ -452,294 +452,294 @@ def rdf_def_genpart(rdf, branches=[]): # TODO: rename branches so that they star
                         'GenericDaughtersPDG(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_HiggsDaughters_idx)')
                 .Define('GenPart_HiggsGrandDaughters_idx',
                         'GenericDaughtersIdx(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_energy',
+                .Define('gen_HiggsDaughters_energy',
                         'SelectByIdx(GenPart_energy, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_eta',
+                .Define('gen_HiggsDaughters_eta',
                         'SelectByIdx(GenPart_eta, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_mass',
+                .Define('gen_HiggsDaughters_mass',
                         'SelectByIdx(GenPart_mass, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_phi',
+                .Define('gen_HiggsDaughters_phi',
                         'SelectByIdx(GenPart_phi, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_pt',
+                .Define('gen_HiggsDaughters_pt',
                         'SelectByIdx(GenPart_pt, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_px',
+                .Define('gen_HiggsDaughters_px',
                         'SelectByIdx(GenPart_px, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_py',
+                .Define('gen_HiggsDaughters_py',
                         'SelectByIdx(GenPart_py, GenPart_HiggsDaughters_idx)')
-                .Define('HiggsDaughters_pz',
+                .Define('gen_HiggsDaughters_pz',
                         'SelectByIdx(GenPart_pz, GenPart_HiggsDaughters_idx)')   
     )
 
     # Get muons
-    new_rdf = (new_rdf.Define('muminus_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, 13)') # muon
-                    .Define('muplus_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, -13)') # anti-muon
-                    .Define('muminus_mass', 'HiggsDaughters_mass[muminus_index]')
-                    .Define('muminus_energy', 'HiggsDaughters_energy[muminus_index]')
-                    .Define('muminus_phi', 'HiggsDaughters_phi[muminus_index]')
-                    .Define('muminus_eta', 'HiggsDaughters_eta[muminus_index]')
-                    .Define('muminus_pt', 'HiggsDaughters_pt[muminus_index]')
-                    .Define('muminus_px', 'HiggsDaughters_px[muminus_index]')
-                    .Define('muminus_py', 'HiggsDaughters_py[muminus_index]')
-                    .Define('muminus_pz', 'HiggsDaughters_pz[muminus_index]')
-                    .Define('muplus_mass', 'HiggsDaughters_mass[muplus_index]')
-                    .Define('muplus_energy', 'HiggsDaughters_energy[muplus_index]')
-                    .Define('muplus_phi', 'HiggsDaughters_phi[muplus_index]')
-                    .Define('muplus_eta', 'HiggsDaughters_eta[muplus_index]')
-                    .Define('muplus_pt', 'HiggsDaughters_pt[muplus_index]')
-                    .Define('muplus_px', 'HiggsDaughters_px[muplus_index]')
-                    .Define('muplus_py', 'HiggsDaughters_py[muplus_index]')
-                    .Define('muplus_pz', 'HiggsDaughters_pz[muplus_index]')
+    new_rdf = (new_rdf.Define('gen_muminus_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, 13)') # muon
+                    .Define('gen_muplus_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, -13)') # anti-muon
+                    .Define('gen_muminus_mass', 'gen_HiggsDaughters_mass[gen_muminus_index]')
+                    .Define('gen_muminus_energy', 'gen_HiggsDaughters_energy[gen_muminus_index]')
+                    .Define('gen_muminus_phi', 'gen_HiggsDaughters_phi[gen_muminus_index]')
+                    .Define('gen_muminus_eta', 'gen_HiggsDaughters_eta[gen_muminus_index]')
+                    .Define('gen_muminus_pt', 'gen_HiggsDaughters_pt[gen_muminus_index]')
+                    .Define('gen_muminus_px', 'gen_HiggsDaughters_px[gen_muminus_index]')
+                    .Define('gen_muminus_py', 'gen_HiggsDaughters_py[gen_muminus_index]')
+                    .Define('gen_muminus_pz', 'gen_HiggsDaughters_pz[gen_muminus_index]')
+                    .Define('gen_muplus_mass', 'gen_HiggsDaughters_mass[gen_muplus_index]')
+                    .Define('gen_muplus_energy', 'gen_HiggsDaughters_energy[gen_muplus_index]')
+                    .Define('gen_muplus_phi', 'gen_HiggsDaughters_phi[gen_muplus_index]')
+                    .Define('gen_muplus_eta', 'gen_HiggsDaughters_eta[gen_muplus_index]')
+                    .Define('gen_muplus_pt', 'gen_HiggsDaughters_pt[gen_muplus_index]')
+                    .Define('gen_muplus_px', 'gen_HiggsDaughters_px[gen_muplus_index]')
+                    .Define('gen_muplus_py', 'gen_HiggsDaughters_py[gen_muplus_index]')
+                    .Define('gen_muplus_pz', 'gen_HiggsDaughters_pz[gen_muplus_index]')
     )
 
     # Get muon-muon separation
-    new_rdf = (new_rdf.Define('dR_muminus_muplus', 'DeltaR(muminus_eta, muminus_phi, muplus_eta, muplus_phi)')
-                    .Define('deta_muminus_muplus', 'muminus_eta - muplus_eta')
-                    .Define('dphi_muminus_muplus', 'muminus_phi - muplus_phi')
-                    .Define('dpt_muminus_muplus', 'muminus_pt - muplus_pt')
-                    .Define('dE_muminus_muplus', 'muminus_energy - muplus_energy')
+    new_rdf = (new_rdf.Define('gen_dR_muminus_muplus', 'DeltaR(gen_muminus_eta, gen_muminus_phi, gen_muplus_eta, gen_muplus_phi)')
+                    .Define('gen_deta_muminus_muplus', 'gen_muminus_eta - gen_muplus_eta')
+                    .Define('gen_dphi_muminus_muplus', 'gen_muminus_phi - gen_muplus_phi')
+                    .Define('gen_dpt_muminus_muplus', 'gen_muminus_pt - gen_muplus_pt')
+                    .Define('gen_dE_muminus_muplus', 'gen_muminus_energy - gen_muplus_energy')
     )
 
     # Get J/Psi
-    new_rdf = (new_rdf.Define('JPsi_cand',
-                            'SumPxPyPzE(muminus_px, muminus_py, muminus_pz, muminus_energy,\
-                            muplus_px, muplus_py, muplus_pz, muplus_energy)')
-                    .Define('JPsi_cand_mass', 'JPsi_cand.M()')
-                    .Define('JPsi_cand_eta', 'JPsi_cand.Eta()')
-                    .Define('JPsi_cand_phi', 'JPsi_cand.Phi()')
-                    .Define('JPsi_cand_p', 'JPsi_cand.P()')
-                    .Define('JPsi_cand_pt', 'JPsi_cand.Pt()')
-                    .Define('JPsi_cand_mt', 'JPsi_cand.Mt()')
-                    .Define('JPsi_cand_energy', 'JPsi_cand.E()')
+    new_rdf = (new_rdf.Define('gen_JPsi_cand',
+                            'SumPxPyPzE(gen_muminus_px, gen_muminus_py, gen_muminus_pz, gen_muminus_energy,\
+                            gen_muplus_px, gen_muplus_py, gen_muplus_pz, gen_muplus_energy)')
+                    .Define('gen_JPsi_cand_mass', 'gen_JPsi_cand.M()')
+                    .Define('gen_JPsi_cand_eta', 'gen_JPsi_cand.Eta()')
+                    .Define('gen_JPsi_cand_phi', 'gen_JPsi_cand.Phi()')
+                    .Define('gen_JPsi_cand_p', 'gen_JPsi_cand.P()')
+                    .Define('gen_JPsi_cand_pt', 'gen_JPsi_cand.Pt()')
+                    .Define('gen_JPsi_cand_mt', 'gen_JPsi_cand.Mt()')
+                    .Define('gen_JPsi_cand_energy', 'gen_JPsi_cand.E()')
     )
 
     # Get charms
-    new_rdf = (new_rdf.Define('charm_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, 4)')  # charm
-                    .Define('anticharm_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, -4)') # anti-charm
-                    .Define('charm_mass', 'HiggsDaughters_mass[charm_index]')
-                    .Define('charm_energy', 'HiggsDaughters_energy[charm_index]')
-                    .Define('charm_phi', 'HiggsDaughters_phi[charm_index]')
-                    .Define('charm_eta', 'HiggsDaughters_eta[charm_index]')
-                    .Define('charm_pt', 'HiggsDaughters_pt[charm_index]')
-                    .Define('charm_px', 'HiggsDaughters_px[charm_index]')
-                    .Define('charm_py', 'HiggsDaughters_py[charm_index]')
-                    .Define('charm_pz', 'HiggsDaughters_pz[charm_index]')
-                    .Define('anticharm_mass', 'HiggsDaughters_mass[anticharm_index]')
-                    .Define('anticharm_energy', 'HiggsDaughters_energy[anticharm_index]')
-                    .Define('anticharm_phi', 'HiggsDaughters_phi[anticharm_index]')
-                    .Define('anticharm_eta', 'HiggsDaughters_eta[anticharm_index]')
-                    .Define('anticharm_pt', 'HiggsDaughters_pt[anticharm_index]')
-                    .Define('anticharm_px', 'HiggsDaughters_px[anticharm_index]')
-                    .Define('anticharm_py', 'HiggsDaughters_py[anticharm_index]')
-                    .Define('anticharm_pz', 'HiggsDaughters_pz[anticharm_index]')
-                    .Define('sorted_charm_indices', 'SortByPt(charm_index, anticharm_index, HiggsDaughters_pt)')
-                    .Define('leadcharm_index', 'sorted_charm_indices[0]') # leading charm
-                    .Define('subcharm_index', 'sorted_charm_indices[1]')  # sub-leading charm
-                    .Define('leadcharm_pdgId', 'GenPart_HiggsDaughters_pdgId[leadcharm_index]')
-                    .Define('leadcharm_mass', 'HiggsDaughters_mass[leadcharm_index]')
-                    .Define('leadcharm_energy', 'HiggsDaughters_energy[leadcharm_index]')
-                    .Define('leadcharm_phi', 'HiggsDaughters_phi[leadcharm_index]')
-                    .Define('leadcharm_eta', 'HiggsDaughters_eta[leadcharm_index]')
-                    .Define('leadcharm_pt', 'HiggsDaughters_pt[leadcharm_index]')
-                    .Define('leadcharm_px', 'HiggsDaughters_px[leadcharm_index]')
-                    .Define('leadcharm_py', 'HiggsDaughters_py[leadcharm_index]')
-                    .Define('leadcharm_pz', 'HiggsDaughters_pz[leadcharm_index]')
-                    .Define('subcharm_pdgId', 'GenPart_HiggsDaughters_pdgId[subcharm_index]')
-                    .Define('subcharm_mass', 'HiggsDaughters_mass[subcharm_index]')
-                    .Define('subcharm_energy', 'HiggsDaughters_energy[subcharm_index]')
-                    .Define('subcharm_phi', 'HiggsDaughters_phi[subcharm_index]')
-                    .Define('subcharm_eta', 'HiggsDaughters_eta[subcharm_index]')
-                    .Define('subcharm_pt', 'HiggsDaughters_pt[subcharm_index]')
-                    .Define('subcharm_px', 'HiggsDaughters_px[subcharm_index]')
-                    .Define('subcharm_py', 'HiggsDaughters_py[subcharm_index]')
-                    .Define('subcharm_pz', 'HiggsDaughters_pz[subcharm_index]')
+    new_rdf = (new_rdf.Define('gen_charm_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, 4)')  # charm
+                    .Define('gen_anticharm_index', 'IndexFindPDG(GenPart_HiggsDaughters_pdgId, -4)') # anti-charm
+                    .Define('gen_charm_mass', 'gen_HiggsDaughters_mass[gen_charm_index]')
+                    .Define('gen_charm_energy', 'gen_HiggsDaughters_energy[gen_charm_index]')
+                    .Define('gen_charm_phi', 'gen_HiggsDaughters_phi[gen_charm_index]')
+                    .Define('gen_charm_eta', 'gen_HiggsDaughters_eta[gen_charm_index]')
+                    .Define('gen_charm_pt', 'gen_HiggsDaughters_pt[gen_charm_index]')
+                    .Define('gen_charm_px', 'gen_HiggsDaughters_px[gen_charm_index]')
+                    .Define('gen_charm_py', 'gen_HiggsDaughters_py[gen_charm_index]')
+                    .Define('gen_charm_pz', 'gen_HiggsDaughters_pz[gen_charm_index]')
+                    .Define('gen_anticharm_mass', 'gen_HiggsDaughters_mass[gen_anticharm_index]')
+                    .Define('gen_anticharm_energy', 'gen_HiggsDaughters_energy[gen_anticharm_index]')
+                    .Define('gen_anticharm_phi', 'gen_HiggsDaughters_phi[gen_anticharm_index]')
+                    .Define('gen_anticharm_eta', 'gen_HiggsDaughters_eta[gen_anticharm_index]')
+                    .Define('gen_anticharm_pt', 'gen_HiggsDaughters_pt[gen_anticharm_index]')
+                    .Define('gen_anticharm_px', 'gen_HiggsDaughters_px[gen_anticharm_index]')
+                    .Define('gen_anticharm_py', 'gen_HiggsDaughters_py[gen_anticharm_index]')
+                    .Define('gen_anticharm_pz', 'gen_HiggsDaughters_pz[gen_anticharm_index]')
+                    .Define('sorted_charm_indices', 'SortByPt(gen_charm_index, gen_anticharm_index, gen_HiggsDaughters_pt)')
+                    .Define('gen_leadcharm_index', 'sorted_charm_indices[0]') # leading charm
+                    .Define('gen_subcharm_index', 'sorted_charm_indices[1]')  # sub-leading charm
+                    .Define('gen_leadcharm_pdgId', 'GenPart_HiggsDaughters_pdgId[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_mass', 'gen_HiggsDaughters_mass[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_energy', 'gen_HiggsDaughters_energy[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_phi', 'gen_HiggsDaughters_phi[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_eta', 'gen_HiggsDaughters_eta[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_pt', 'gen_HiggsDaughters_pt[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_px', 'gen_HiggsDaughters_px[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_py', 'gen_HiggsDaughters_py[gen_leadcharm_index]')
+                    .Define('gen_leadcharm_pz', 'gen_HiggsDaughters_pz[gen_leadcharm_index]')
+                    .Define('gen_subcharm_pdgId', 'GenPart_HiggsDaughters_pdgId[gen_subcharm_index]')
+                    .Define('gen_subcharm_mass', 'gen_HiggsDaughters_mass[gen_subcharm_index]')
+                    .Define('gen_subcharm_energy', 'gen_HiggsDaughters_energy[gen_subcharm_index]')
+                    .Define('gen_subcharm_phi', 'gen_HiggsDaughters_phi[gen_subcharm_index]')
+                    .Define('gen_subcharm_eta', 'gen_HiggsDaughters_eta[gen_subcharm_index]')
+                    .Define('gen_subcharm_pt', 'gen_HiggsDaughters_pt[gen_subcharm_index]')
+                    .Define('gen_subcharm_px', 'gen_HiggsDaughters_px[gen_subcharm_index]')
+                    .Define('gen_subcharm_py', 'gen_HiggsDaughters_py[gen_subcharm_index]')
+                    .Define('gen_subcharm_pz', 'gen_HiggsDaughters_pz[gen_subcharm_index]')
     )
 
     # Get charm-charm separation
-    new_rdf = (new_rdf.Define('dR_charm_anticharm', 'DeltaR(charm_eta, charm_phi, anticharm_eta, anticharm_phi)')
-                    .Define('deta_charm_anticharm', 'charm_eta - anticharm_eta')
-                    .Define('dphi_charm_anticharm', 'charm_phi - anticharm_phi')
-                    .Define('dpt_charm_anticharm', 'charm_pt - anticharm_pt')
-                    .Define('dpt_leadcharm_subcharm', 'leadcharm_pt - subcharm_pt')
+    new_rdf = (new_rdf.Define('gen_dR_charm_anticharm', 'DeltaR(gen_charm_eta, gen_charm_phi, gen_anticharm_eta, gen_anticharm_phi)')
+                    .Define('gen_deta_charm_anticharm', 'gen_charm_eta - gen_anticharm_eta')
+                    .Define('gen_dphi_charm_anticharm', 'gen_charm_phi - gen_anticharm_phi')
+                    .Define('gen_dpt_charm_anticharm', 'gen_charm_pt - gen_anticharm_pt')
+                    .Define('gen_dpt_leadcharm_subcharm', 'gen_leadcharm_pt - gen_subcharm_pt')
     )
 
     # Get di-charm
-    new_rdf = (new_rdf.Define('dicharm_cand',
-                            'SumPxPyPzE(charm_px, charm_py, charm_pz, charm_energy,\
-                            anticharm_px, anticharm_py, anticharm_pz, anticharm_energy)')
-                    .Define('dicharm_cand_mass', 'dicharm_cand.M()')
-                    .Define('dicharm_cand_eta', 'dicharm_cand.Eta()')
-                    .Define('dicharm_cand_phi', 'dicharm_cand.Phi()')
-                    .Define('dicharm_cand_p', 'dicharm_cand.P()')
-                    .Define('dicharm_cand_pt', 'dicharm_cand.Pt()')
-                    .Define('dicharm_cand_mt', 'dicharm_cand.Mt()')
-                    .Define('dicharm_cand_energy', 'dicharm_cand.E()')
+    new_rdf = (new_rdf.Define('gen_dicharm_cand',
+                            'SumPxPyPzE(gen_charm_px, gen_charm_py, gen_charm_pz, gen_charm_energy,\
+                            gen_anticharm_px, gen_anticharm_py, gen_anticharm_pz, gen_anticharm_energy)')
+                    .Define('gen_dicharm_cand_mass', 'gen_dicharm_cand.M()')
+                    .Define('gen_dicharm_cand_eta', 'gen_dicharm_cand.Eta()')
+                    .Define('gen_dicharm_cand_phi', 'gen_dicharm_cand.Phi()')
+                    .Define('gen_dicharm_cand_p', 'gen_dicharm_cand.P()')
+                    .Define('gen_dicharm_cand_pt', 'gen_dicharm_cand.Pt()')
+                    .Define('gen_dicharm_cand_mt', 'gen_dicharm_cand.Mt()')
+                    .Define('gen_dicharm_cand_energy', 'gen_dicharm_cand.E()')
     )
 
     # Get charm-JPsi separation
-    new_rdf = (new_rdf.Define('dR_charm_JPsi', 'DeltaR(charm_eta, charm_phi, JPsi_cand_eta, JPsi_cand_phi)')
-                    .Define('deta_charm_JPsi', 'charm_eta - JPsi_cand_eta')
-                    .Define('dphi_charm_JPsi', 'charm_phi - JPsi_cand_phi')
-                    .Define('dpt_charm_JPsi', 'charm_pt - JPsi_cand_pt')
-                    .Define('dR_anticharm_JPsi', 'DeltaR(anticharm_eta, anticharm_phi, JPsi_cand_eta, JPsi_cand_phi)')
-                    .Define('deta_anticharm_JPsi', 'anticharm_eta - JPsi_cand_eta')
-                    .Define('dphi_anticharm_JPsi', 'anticharm_phi - JPsi_cand_phi')
-                    .Define('dpt_anticharm_JPsi', 'anticharm_pt - JPsi_cand_pt')
-                    .Define('dR_leadcharm_JPsi', 'DeltaR(leadcharm_eta, leadcharm_phi, JPsi_cand_eta, JPsi_cand_phi)')
-                    .Define('deta_leadcharm_JPsi', 'leadcharm_eta - JPsi_cand_eta')
-                    .Define('dphi_leadcharm_JPsi', 'leadcharm_phi - JPsi_cand_phi')
-                    .Define('dpt_leadcharm_JPsi', 'leadcharm_pt - JPsi_cand_pt')
-                    .Define('dR_subcharm_JPsi', 'DeltaR(subcharm_eta, subcharm_phi, JPsi_cand_eta, JPsi_cand_phi)')
-                    .Define('deta_subcharm_JPsi', 'subcharm_eta - JPsi_cand_eta')
-                    .Define('dphi_subcharm_JPsi', 'subcharm_phi - JPsi_cand_phi')
-                    .Define('dpt_subcharm_JPsi', 'subcharm_pt - JPsi_cand_pt')
+    new_rdf = (new_rdf.Define('gen_dR_charm_JPsi', 'DeltaR(gen_charm_eta, gen_charm_phi, gen_JPsi_cand_eta, gen_JPsi_cand_phi)')
+                    .Define('gen_deta_charm_JPsi', 'gen_charm_eta - gen_JPsi_cand_eta')
+                    .Define('gen_dphi_charm_JPsi', 'gen_charm_phi - gen_JPsi_cand_phi')
+                    .Define('gen_dpt_charm_JPsi', 'gen_charm_pt - gen_JPsi_cand_pt')
+                    .Define('gen_dR_anticharm_JPsi', 'DeltaR(gen_anticharm_eta, gen_anticharm_phi, gen_JPsi_cand_eta, gen_JPsi_cand_phi)')
+                    .Define('gen_deta_anticharm_JPsi', 'gen_anticharm_eta - gen_JPsi_cand_eta')
+                    .Define('gen_dphi_anticharm_JPsi', 'gen_anticharm_phi - gen_JPsi_cand_phi')
+                    .Define('gen_dpt_anticharm_JPsi', 'gen_anticharm_pt - gen_JPsi_cand_pt')
+                    .Define('gen_dR_leadcharm_JPsi', 'DeltaR(gen_leadcharm_eta, gen_leadcharm_phi, gen_JPsi_cand_eta, gen_JPsi_cand_phi)')
+                    .Define('gen_deta_leadcharm_JPsi', 'gen_leadcharm_eta - gen_JPsi_cand_eta')
+                    .Define('gen_dphi_leadcharm_JPsi', 'gen_leadcharm_phi - gen_JPsi_cand_phi')
+                    .Define('gen_dpt_leadcharm_JPsi', 'gen_leadcharm_pt - gen_JPsi_cand_pt')
+                    .Define('gen_dR_subcharm_JPsi', 'DeltaR(gen_subcharm_eta, gen_subcharm_phi, gen_JPsi_cand_eta, gen_JPsi_cand_phi)')
+                    .Define('gen_deta_subcharm_JPsi', 'gen_subcharm_eta - gen_JPsi_cand_eta')
+                    .Define('gen_dphi_subcharm_JPsi', 'gen_subcharm_phi - gen_JPsi_cand_phi')
+                    .Define('gen_dpt_subcharm_JPsi', 'gen_subcharm_pt - gen_JPsi_cand_pt')
     )
 
     # Get dicharm-JPsi separation
-    new_rdf = (new_rdf.Define('dR_dicharm_JPsi', 'DeltaR(dicharm_cand_eta, dicharm_cand_phi, JPsi_cand_eta, JPsi_cand_phi)')
-                    .Define('deta_dicharm_JPsi', 'dicharm_cand_eta - JPsi_cand_eta')
-                    .Define('dphi_dicharm_JPsi', 'dicharm_cand_phi - JPsi_cand_phi')
-                    .Define('dpt_dicharm_JPsi', 'dicharm_cand_pt - JPsi_cand_pt')
+    new_rdf = (new_rdf.Define('gen_dR_dicharm_JPsi', 'DeltaR(gen_dicharm_cand_eta, gen_dicharm_cand_phi, gen_JPsi_cand_eta, gen_JPsi_cand_phi)')
+                    .Define('gen_deta_dicharm_JPsi', 'gen_dicharm_cand_eta - gen_JPsi_cand_eta')
+                    .Define('gen_dphi_dicharm_JPsi', 'gen_dicharm_cand_phi - gen_JPsi_cand_phi')
+                    .Define('gen_dpt_dicharm_JPsi', 'gen_dicharm_cand_pt - gen_JPsi_cand_pt')
     )
 
     # Get Higgs
     new_rdf = (new_rdf.Define('Higgs_cand',
-                            'SumPtEtaPhiE(dicharm_cand_pt, dicharm_cand_eta, dicharm_cand_phi, dicharm_cand_energy,\
-                            JPsi_cand_pt, JPsi_cand_eta, JPsi_cand_phi, JPsi_cand_energy)')
-                    .Define('Higgs_cand_mass', 'Higgs_cand.M()')
-                    .Define('Higgs_cand_eta', 'Higgs_cand.Eta()')
-                    .Define('Higgs_cand_phi', 'Higgs_cand.Phi()')
-                    .Define('Higgs_cand_p', 'Higgs_cand.P()')
-                    .Define('Higgs_cand_pt', 'Higgs_cand.Pt()')
-                    .Define('Higgs_cand_mt', 'Higgs_cand.Mt()')
-                    .Define('Higgs_cand_energy', 'Higgs_cand.E()')
+                            'SumPtEtaPhiE(gen_dicharm_cand_pt, gen_dicharm_cand_eta, gen_dicharm_cand_phi, gen_dicharm_cand_energy,\
+                            gen_JPsi_cand_pt, gen_JPsi_cand_eta, gen_JPsi_cand_phi, gen_JPsi_cand_energy)')
+                    .Define('gen_Higgs_cand_mass', 'Higgs_cand.M()')
+                    .Define('gen_Higgs_cand_eta', 'Higgs_cand.Eta()')
+                    .Define('gen_Higgs_cand_phi', 'Higgs_cand.Phi()')
+                    .Define('gen_Higgs_cand_p', 'Higgs_cand.P()')
+                    .Define('gen_Higgs_cand_pt', 'Higgs_cand.Pt()')
+                    .Define('gen_Higgs_cand_mt', 'Higgs_cand.Mt()')
+                    .Define('gen_Higgs_cand_energy', 'Higgs_cand.E()')
     )
 
     # Branches
     branches += ['GenPart_Higgs_idx',
-                'Higgs_energy',
-                'Higgs_eta',
-                'Higgs_mass',
-                'Higgs_phi',
-                'Higgs_pt',
-                'Higgs_px',
-                'Higgs_py',
-                'Higgs_pz']
+                'gen_Higgs_energy',
+                'gen_Higgs_eta',
+                'gen_Higgs_mass',
+                'gen_Higgs_phi',
+                'gen_Higgs_pt',
+                'gen_Higgs_px',
+                'gen_Higgs_py',
+                'gen_Higgs_pz']
     
     branches += ['GenPart_HiggsDaughters_pdgId',
                 'GenPart_HiggsDaughters_idx',
                 'GenPart_HiggsGrandDaughters_pdgId',
                 'GenPart_HiggsGrandDaughters_idx',
-                'HiggsDaughters_energy',
-                'HiggsDaughters_eta',
-                'HiggsDaughters_mass',
-                'HiggsDaughters_phi',
-                'HiggsDaughters_pt',
-                'HiggsDaughters_px',
-                'HiggsDaughters_py',
-                'HiggsDaughters_pz']
+                'gen_HiggsDaughters_energy',
+                'gen_HiggsDaughters_eta',
+                'gen_HiggsDaughters_mass',
+                'gen_HiggsDaughters_phi',
+                'gen_HiggsDaughters_pt',
+                'gen_HiggsDaughters_px',
+                'gen_HiggsDaughters_py',
+                'gen_HiggsDaughters_pz']
     
-    branches += ['JPsi_cand_mass',
-                'JPsi_cand_eta',
-                'JPsi_cand_phi',
-                'JPsi_cand_p',
-                'JPsi_cand_pt',
-                'JPsi_cand_mt',
-                'JPsi_cand_energy',
-                'dicharm_cand_mass',
-                'dicharm_cand_eta',
-                'dicharm_cand_phi',
-                'dicharm_cand_p',
-                'dicharm_cand_pt',
-                'dicharm_cand_mt',
-                'dicharm_cand_energy',
-                'Higgs_cand_mass',
-                'Higgs_cand_eta',
-                'Higgs_cand_phi',
-                'Higgs_cand_p',
-                'Higgs_cand_pt',
-                'Higgs_cand_mt',
-                'Higgs_cand_energy']
+    branches += ['gen_JPsi_cand_mass',
+                'gen_JPsi_cand_eta',
+                'gen_JPsi_cand_phi',
+                'gen_JPsi_cand_p',
+                'gen_JPsi_cand_pt',
+                'gen_JPsi_cand_mt',
+                'gen_JPsi_cand_energy',
+                'gen_dicharm_cand_mass',
+                'gen_dicharm_cand_eta',
+                'gen_dicharm_cand_phi',
+                'gen_dicharm_cand_p',
+                'gen_dicharm_cand_pt',
+                'gen_dicharm_cand_mt',
+                'gen_dicharm_cand_energy',
+                'gen_Higgs_cand_mass',
+                'gen_Higgs_cand_eta',
+                'gen_Higgs_cand_phi',
+                'gen_Higgs_cand_p',
+                'gen_Higgs_cand_pt',
+                'gen_Higgs_cand_mt',
+                'gen_Higgs_cand_energy']
     
-    branches += ['dR_muminus_muplus',
-                'deta_muminus_muplus',
-                'dphi_muminus_muplus',
-                'dpt_muminus_muplus',
-                'dE_muminus_muplus',
-                'dR_charm_anticharm',
-                'deta_charm_anticharm',
-                'dphi_charm_anticharm',
-                'dpt_charm_anticharm',
-                'dpt_leadcharm_subcharm',
-                'dR_charm_JPsi',
-                'deta_charm_JPsi',
-                'dphi_charm_JPsi',
-                'dpt_charm_JPsi',
-                'dR_anticharm_JPsi',
-                'deta_anticharm_JPsi',
-                'dphi_anticharm_JPsi',
-                'dpt_anticharm_JPsi',
-                'dR_leadcharm_JPsi',
-                'deta_leadcharm_JPsi',
-                'dphi_leadcharm_JPsi',
-                'dpt_leadcharm_JPsi',
-                'dR_subcharm_JPsi',
-                'deta_subcharm_JPsi',
-                'dphi_subcharm_JPsi',
-                'dpt_subcharm_JPsi',
-                'dR_dicharm_JPsi',
-                'deta_dicharm_JPsi',
-                'dphi_dicharm_JPsi',
-                'dpt_dicharm_JPsi']
+    branches += ['gen_dR_muminus_muplus',
+                'gen_deta_muminus_muplus',
+                'gen_dphi_muminus_muplus',
+                'gen_dpt_muminus_muplus',
+                'gen_dE_muminus_muplus',
+                'gen_dR_charm_anticharm',
+                'gen_deta_charm_anticharm',
+                'gen_dphi_charm_anticharm',
+                'gen_dpt_charm_anticharm',
+                'gen_dpt_leadcharm_subcharm',
+                'gen_dR_charm_JPsi',
+                'gen_deta_charm_JPsi',
+                'gen_dphi_charm_JPsi',
+                'gen_dpt_charm_JPsi',
+                'gen_dR_anticharm_JPsi',
+                'gen_deta_anticharm_JPsi',
+                'gen_dphi_anticharm_JPsi',
+                'gen_dpt_anticharm_JPsi',
+                'gen_dR_leadcharm_JPsi',
+                'gen_deta_leadcharm_JPsi',
+                'gen_dphi_leadcharm_JPsi',
+                'gen_dpt_leadcharm_JPsi',
+                'gen_dR_subcharm_JPsi',
+                'gen_deta_subcharm_JPsi',
+                'gen_dphi_subcharm_JPsi',
+                'gen_dpt_subcharm_JPsi',
+                'gen_dR_dicharm_JPsi',
+                'gen_deta_dicharm_JPsi',
+                'gen_dphi_dicharm_JPsi',
+                'gen_dpt_dicharm_JPsi']
     
-    branches += ['muminus_mass',
-                'muminus_energy',
-                'muminus_phi',
-                'muminus_eta',
-                'muminus_pt',
-                'muminus_px',
-                'muminus_py',
-                'muminus_pz',
-                'muplus_mass',
-                'muplus_energy',
-                'muplus_phi',
-                'muplus_eta',
-                'muplus_pt',
-                'muplus_px',
-                'muplus_py',
-                'muplus_pz',
-                'charm_mass',
-                'charm_energy',
-                'charm_phi',
-                'charm_eta',
-                'charm_pt',
-                'charm_px',
-                'charm_py',
-                'charm_pz',
-                'anticharm_mass',
-                'anticharm_energy',
-                'anticharm_phi',
-                'anticharm_eta',
-                'anticharm_pt',
-                'anticharm_px',
-                'anticharm_py',
-                'anticharm_pz',
-                'leadcharm_pdgId',
-                'leadcharm_mass',
-                'leadcharm_energy',
-                'leadcharm_phi',
-                'leadcharm_eta',
-                'leadcharm_pt',
-                'leadcharm_px',
-                'leadcharm_py',
-                'leadcharm_pz',
-                'subcharm_pdgId',
-                'subcharm_mass',
-                'subcharm_energy',
-                'subcharm_phi',
-                'subcharm_eta',
-                'subcharm_pt',
-                'subcharm_px',
-                'subcharm_py',
-                'subcharm_pz']
+    branches += ['gen_muminus_mass',
+                'gen_muminus_energy',
+                'gen_muminus_eta',
+                'gen_muminus_phi',
+                'gen_muminus_pt',
+                'gen_muminus_px',
+                'gen_muminus_py',
+                'gen_muminus_pz',
+                'gen_muplus_mass',
+                'gen_muplus_energy',
+                'gen_muplus_eta',
+                'gen_muplus_phi',
+                'gen_muplus_pt',
+                'gen_muplus_px',
+                'gen_muplus_py',
+                'gen_muplus_pz',
+                'gen_charm_mass',
+                'gen_charm_energy',
+                'gen_charm_eta',
+                'gen_charm_phi',
+                'gen_charm_pt',
+                'gen_charm_px',
+                'gen_charm_py',
+                'gen_charm_pz',
+                'gen_anticharm_mass',
+                'gen_anticharm_energy',
+                'gen_anticharm_eta',
+                'gen_anticharm_phi',
+                'gen_anticharm_pt',
+                'gen_anticharm_px',
+                'gen_anticharm_py',
+                'gen_anticharm_pz',
+                'gen_leadcharm_pdgId',
+                'gen_leadcharm_mass',
+                'gen_leadcharm_energy',
+                'gen_leadcharm_phi',
+                'gen_leadcharm_eta',
+                'gen_leadcharm_pt',
+                'gen_leadcharm_px',
+                'gen_leadcharm_py',
+                'gen_leadcharm_pz',
+                'gen_subcharm_pdgId',
+                'gen_subcharm_mass',
+                'gen_subcharm_energy',
+                'gen_subcharm_phi',
+                'gen_subcharm_eta',
+                'gen_subcharm_pt',
+                'gen_subcharm_px',
+                'gen_subcharm_py',
+                'gen_subcharm_pz']
     
     return new_rdf, branches

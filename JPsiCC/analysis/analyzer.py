@@ -136,7 +136,7 @@ class JPsiCCLoader:
                 raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d
 
-    def plot_hists(self, hist_dict, draw=True, normSIG=True, cdf=False, user_sfx=''):
+    def plot_hists(self, hist_dict, draw=True, normSIG=True, cdf=False, save=False, user_sfx=''):
         '''Plot histograms from dictionary of definitions.
 
         Args:
@@ -149,6 +149,8 @@ class JPsiCCLoader:
             cdf (bool, optional): Whether to draw a CDF of each histogram.
                 If True, additional histograms will be created with keys ending
                 with the suffix, '_cdf'.
+                Defaults to False.
+            save (bool, optional): Whether to save the histograms to a ROOT file.
                 Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
@@ -177,7 +179,10 @@ class JPsiCCLoader:
 
             # Add CDF
             if cdf:
-                histo1d_cdf = histo1d.GetCumulative()
+                normed_histo1d = histo1d.Clone()
+                normed_histo1d.SetDirectory(0)
+                normed_histo1d.Scale(1/normed_histo1d.Integral())
+                histo1d_cdf = normed_histo1d.GetCumulative()
                 model1d_cdf = (f'{hname}_cdf', f'{hdef["title"]}_cdf', hdef['bin'], hdef['xmin'], hdef['xmax'])
                 self._hists[f'{key}_cdf'] = histo1d_cdf
                 self._models[f'{key}_cdf'] = model1d_cdf
@@ -193,8 +198,27 @@ class JPsiCCLoader:
                     c.SaveAs(os.path.join(self._plotsavedir, f'{hname}_cdf.png'))
         return
     
-    def createDataRDF(self, event_spec_json):
+    def saveHistos(self, user_sfx=''):
+        '''Save histograms to a ROOT file.
 
+        Args:
+            user_sfx (str, optional): Suffix to add to the names of the ROOT file.
+                Defaults to ''.
+
+        Returns:
+            (None)
+        '''
+        fname = f'histos_{self._sfx}{"_" if user_sfx else ""}{user_sfx}.root'
+        rootfile = ROOT.TFile.Open(fname, 'RECREATE')
+        rootfile.cd()
+        print('{}INFO: a ROOT file has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
+        for histo in self._hists.values():
+            histo.Write()
+        rootfile.Write()
+        rootfile.Close()
+        return
+
+    def createDataRDF(self, event_spec_json):
         '''Open a sample using JSON spec and load it onto a RDF.
 
         Args:
@@ -246,7 +270,7 @@ class JPsiCCLoader:
         '''
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=True)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=False)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=False)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=False)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=False)
@@ -354,7 +378,7 @@ class JPsiCCLoader:
         '''
         return self._cutflow
 
-    def snapshotRDF(self, name='', make_pkl=True):
+    def snapshotRDF(self, name='', make_pkl=True, user_sfx=''):
         '''Create a snapshot of the RDF.
 
         Outputs a file whose name is printed in the terminal.
@@ -366,17 +390,20 @@ class JPsiCCLoader:
                 If True, a file with the extension .pkl and same name/suffix as the snapshot .root file
                 will be created. This will contain the self._cutflow dictionary.
                 Defaults to True.
+            user_sfx (str, optional): Suffix to add to the names of the files.
+                Only valid when name is ''.
+                Defaults to ''.
 
         Returns:
             (None)
         '''
-        if name=='': fname = f'snapshot_{self._sfx}.root'
+        if name=='': fname = f'snapshot_{self._sfx}{"_" if user_sfx else ""}{user_sfx}.root'
         else: fname = name
         self._rdf.Snapshot('Events', fname, self._branches)
         if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         if make_pkl:
-            pklname = f'{fname.rstrip(".root")}.pkl'
+            pklname = f'{fname.removesuffix(".root")}.pkl'
             with open(pklname, 'wb') as f:
                 pickle.dump(self._cutflow, f)
             print('{}INFO: a pickle has been created. >> {} {}'.format('\033[1;33m', pklname, '\033[0m'))
@@ -398,7 +425,7 @@ class JPsiCCLoader:
         self._rdf = ROOT.RDataFrame(treename, filename)
         if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         if read_pkl:
-            pklname = f'{filename.rstrip(".root")}.pkl'
+            pklname = f'{filename.removesuffix(".root")}.pkl'
             with open(pklname, 'rb') as f:
                 self._cutflow = pickle.load(f)
         return
@@ -421,7 +448,7 @@ class JPsiCCLoader:
         stats, vartype = self._rdf.Stats(varname), self._rdf.GetColumnType(varname)
         return stats, vartype
 
-    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], normSIG=True, cdf=False, user_sfx=''):
+    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], normSIG=True, cdf=False, save=False, user_sfx=''):
         '''Make histograms from the internal RDF.
 
         If 'plot' is True, outputs histograms in the 'plots' directory. Otherwise,
@@ -444,6 +471,8 @@ class JPsiCCLoader:
                 If True, additional histograms will be created with keys ending
                 with the suffix, '_cdf'.
                 Defaults to False.
+            save (bool, optional): Whether to save the histograms to a ROOT file.
+                Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
 
@@ -465,6 +494,7 @@ class JPsiCCLoader:
             case _: pass
         if keys: hist_dict = {key: val for key, val in hist_dict.items() if key in keys}
         if plot: self.plot_hists(hist_dict, draw=draw, normSIG=normSIG, cdf=cdf, user_sfx=user_sfx)
+        if save: self.saveHistos(user_sfx=user_sfx)
         else: return hist_dict
     
     def retrieveHisto(self, key):
@@ -950,12 +980,12 @@ if __name__=='__main__':
 
         case 'mcsig':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
-            # mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
-            # mcsig.defineColumnsRDF()
-            # mcsig.snapshotRDF()
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
-            mcsig.makeHistos(genplots=True, cdf=True)
-            mcsig.makeCutFlowPlot()
+            mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
+            mcsig.defineColumnsRDF()
+            mcsig.snapshotRDF(user_sfx='no_filter')
+            # mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
+            # mcsig.makeHistos(genplots=True, cdf=True, save=True, draw=False)
+            # mcsig.makeCutFlowPlot()
         
         case 'allsnap':
             mcbkg = JPsiCCLoader('MC_BKG', 2018, '202406', 'GF')
@@ -978,8 +1008,9 @@ if __name__=='__main__':
 
         case 'gen':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
-            mcsig.makeHistos(genplots=True, user_sfx='', normSIG=True)
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240816_WEIGHT_no_filter.root')
+            # mcsig.cut('trigger>0')
+            mcsig.makeHistos(genplots=True, plot=True, draw=False, normSIG=False, cdf=True, save=True, user_sfx='no_filter')
 
         case 'allplots' | 'noweight' | 'cut':
             if preset=='noweight': use_weight, draw_indiv = False, False
