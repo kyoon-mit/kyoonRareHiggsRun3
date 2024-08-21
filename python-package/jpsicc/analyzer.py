@@ -136,7 +136,7 @@ class JPsiCCLoader:
                 raise ValueError(f'{SAMP} is not a valid option.')
         return histo1d
 
-    def plot_hists(self, hist_dict, draw=True, normSIG=True, cdf=False, user_sfx=''):
+    def plot_hists(self, hist_dict, draw=True, normSIG=True, cdf=False, save=False, user_sfx=''):
         '''Plot histograms from dictionary of definitions.
 
         Args:
@@ -149,6 +149,8 @@ class JPsiCCLoader:
             cdf (bool, optional): Whether to draw a CDF of each histogram.
                 If True, additional histograms will be created with keys ending
                 with the suffix, '_cdf'.
+                Defaults to False.
+            save (bool, optional): Whether to save the histograms to a ROOT file.
                 Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
@@ -177,7 +179,10 @@ class JPsiCCLoader:
 
             # Add CDF
             if cdf:
-                histo1d_cdf = histo1d.GetCumulative()
+                normed_histo1d = histo1d.Clone()
+                normed_histo1d.SetDirectory(0)
+                normed_histo1d.Scale(1/normed_histo1d.Integral())
+                histo1d_cdf = normed_histo1d.GetCumulative()
                 model1d_cdf = (f'{hname}_cdf', f'{hdef["title"]}_cdf', hdef['bin'], hdef['xmin'], hdef['xmax'])
                 self._hists[f'{key}_cdf'] = histo1d_cdf
                 self._models[f'{key}_cdf'] = model1d_cdf
@@ -193,8 +198,27 @@ class JPsiCCLoader:
                     c.SaveAs(os.path.join(self._plotsavedir, f'{hname}_cdf.png'))
         return
     
-    def createDataRDF(self, event_spec_json):
+    def saveHistos(self, user_sfx=''):
+        '''Save histograms to a ROOT file.
 
+        Args:
+            user_sfx (str, optional): Suffix to add to the names of the ROOT file.
+                Defaults to ''.
+
+        Returns:
+            (None)
+        '''
+        fname = f'histos_{self._sfx}{"_" if user_sfx else ""}{user_sfx}.root'
+        rootfile = ROOT.TFile.Open(fname, 'RECREATE')
+        rootfile.cd()
+        print('{}INFO: a ROOT file has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
+        for histo in self._hists.values():
+            histo.Write()
+        rootfile.Write()
+        rootfile.Close()
+        return
+
+    def createDataRDF(self, event_spec_json):
         '''Open a sample using JSON spec and load it onto a RDF.
 
         Args:
@@ -233,38 +257,50 @@ class JPsiCCLoader:
         self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(rdf_runs, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
 
-    def defineColumnsRDF(self):
+    def defineColumnsRDF(self, filter_trigger=True, filter_vertex=True,
+                         filter_muons=True, filter_jpsi=True, filter_jets=True, filter_higgs=True):
         '''Define columns for the internal RDF.
 
         The columns will be different depending on the category.
 
         Args:
             rdf (ROOT.RDataFrame): Input ROOT.RDataFrame.
+            filter_trigger (optional): Defaults to True.
+            filter_vertex (optional): Defaults to True.
+            filter_muons (optional): Defaults to True.
+            filter_jpsi (optional): Defaults to True.
+            filter_jets (optional): Defaults to True.
+            filter_higgs (optional): Defaults to True.
 
         Returns:
             (None)
         '''
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=True)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=filter_trigger)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=filter_vertex)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=filter_muons)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=filter_jpsi)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
                 if self.SAMPLE=='MC_SIG':
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
-                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=False)
+                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=filter_higgs)
             case _: pass
         return
     
-    def cut(self, cut, weights=True):
+    def cut(self, cut, define_col='', define_exp='', weights=True):
         '''Filter the internal RDF using the cut expression.
 
         The internal self._cutflow object is updated when the cut is applied.
 
         Args:
             cut (str): String expression for the cut filter.
+            define_col (str, optional): Create a new RDF column by this name.
+                If '', no definition is created.
+                Defaults to ''.
+            define_exp (str, optional): The RDF column definition.
+                Defaults to ''.
             weights (bool, optional): Whether to use weights in the computation
                 of the cut flow and the number of events.
                 In order to use this, there must be a 'w' column in the RDF.
@@ -277,6 +313,10 @@ class JPsiCCLoader:
         Returns:
             nevents (float): Number of events after the cut.
         '''
+        if define_col:
+            try: self._rdf = self._rdf.Define(str(define_col), str(define_exp))
+            except Exception as err:
+                print(err)
         try: self._rdf = self._rdf.Filter(cut)
         except Exception: raise Exception(f'The cut {cut} cannot be applied.')
         if weights:
@@ -354,7 +394,7 @@ class JPsiCCLoader:
         '''
         return self._cutflow
 
-    def snapshotRDF(self, name='', make_pkl=True):
+    def snapshotRDF(self, name='', make_pkl=True, user_sfx=''):
         '''Create a snapshot of the RDF.
 
         Outputs a file whose name is printed in the terminal.
@@ -366,17 +406,20 @@ class JPsiCCLoader:
                 If True, a file with the extension .pkl and same name/suffix as the snapshot .root file
                 will be created. This will contain the self._cutflow dictionary.
                 Defaults to True.
+            user_sfx (str, optional): Suffix to add to the names of the files.
+                Only valid when name is ''.
+                Defaults to ''.
 
         Returns:
             (None)
         '''
-        if name=='': fname = f'snapshot_{self._sfx}.root'
+        if name=='': fname = f'snapshot_{self._sfx}{"_" if user_sfx else ""}{user_sfx}.root'
         else: fname = name
         self._rdf.Snapshot('Events', fname, self._branches)
         if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         if make_pkl:
-            pklname = f'{fname.rstrip(".root")}.pkl'
+            pklname = f'{fname.removesuffix(".root")}.pkl'
             with open(pklname, 'wb') as f:
                 pickle.dump(self._cutflow, f)
             print('{}INFO: a pickle has been created. >> {} {}'.format('\033[1;33m', pklname, '\033[0m'))
@@ -398,7 +441,7 @@ class JPsiCCLoader:
         self._rdf = ROOT.RDataFrame(treename, filename)
         if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
         if read_pkl:
-            pklname = f'{filename.rstrip(".root")}.pkl'
+            pklname = f'{filename.removesuffix(".root")}.pkl'
             with open(pklname, 'rb') as f:
                 self._cutflow = pickle.load(f)
         return
@@ -421,7 +464,7 @@ class JPsiCCLoader:
         stats, vartype = self._rdf.Stats(varname), self._rdf.GetColumnType(varname)
         return stats, vartype
 
-    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], normSIG=True, cdf=False, user_sfx=''):
+    def makeHistos(self, plot=True, draw=True, genplots=False, keys=[], normSIG=True, cdf=False, save=False, user_sfx=''):
         '''Make histograms from the internal RDF.
 
         If 'plot' is True, outputs histograms in the 'plots' directory. Otherwise,
@@ -444,6 +487,8 @@ class JPsiCCLoader:
                 If True, additional histograms will be created with keys ending
                 with the suffix, '_cdf'.
                 Defaults to False.
+            save (bool, optional): Whether to save the histograms to a ROOT file.
+                Defaults to False.
             user_sfx (str, optional): Suffix to add to the names of the files.
                 Defaults to ''.
 
@@ -465,6 +510,7 @@ class JPsiCCLoader:
             case _: pass
         if keys: hist_dict = {key: val for key, val in hist_dict.items() if key in keys}
         if plot: self.plot_hists(hist_dict, draw=draw, normSIG=normSIG, cdf=cdf, user_sfx=user_sfx)
+        if save: self.saveHistos(user_sfx=user_sfx)
         else: return hist_dict
     
     def retrieveHisto(self, key):
@@ -893,32 +939,6 @@ class JPsiCCAnalyzer:
         for loader in self._loaders.values():
             loader.makeCutFlowPlot()
         return
-
-    def scanCut(self, var, scantype):
-        '''Scan the cut over a variable.
-
-        Args:
-            var (str): Name of the variable to scan over.
-            scantype (str): Type of scanning. Options are the following.
-                'floor': applies a lower limit
-                'ceiling': applies an upper limit
-                'window': applies a window
-
-        Raises:
-            ValueError: If the given scantype is not one of the options.
-        '''
-        # stats, vartype = 
-        pass
-    
-    def scanMultiCut(self, varlist):
-        '''Scan a selection of variables.
-
-        Args:
-            varlist (list(str)): List of variables to scan over.
-        '''
-        # for var in varlist:
-        #     for sample
-        pass
 
     def fitSignal(self, key_var, template):
         """Fit the signal RDF to a desired template.
