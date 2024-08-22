@@ -181,7 +181,7 @@ class JPsiCCLoader:
             if cdf:
                 normed_histo1d = histo1d.Clone()
                 normed_histo1d.SetDirectory(0)
-                normed_histo1d.Scale(1/normed_histo1d.Integral())
+                if normSIG: normed_histo1d.Scale(1/normed_histo1d.Integral())
                 histo1d_cdf = normed_histo1d.GetCumulative()
                 model1d_cdf = (f'{hname}_cdf', f'{hdef["title"]}_cdf', hdef['bin'], hdef['xmin'], hdef['xmax'])
                 self._hists[f'{key}_cdf'] = histo1d_cdf
@@ -257,38 +257,50 @@ class JPsiCCLoader:
         self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(rdf_runs, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
 
-    def defineColumnsRDF(self):
+    def defineColumnsRDF(self, filter_trigger=True, filter_vertex=True,
+                         filter_muons=True, filter_jpsi=True, filter_jets=True, filter_higgs=True):
         '''Define columns for the internal RDF.
 
         The columns will be different depending on the category.
 
         Args:
             rdf (ROOT.RDataFrame): Input ROOT.RDataFrame.
+            filter_trigger (optional): Defaults to True.
+            filter_vertex (optional): Defaults to True.
+            filter_muons (optional): Defaults to True.
+            filter_jpsi (optional): Defaults to True.
+            filter_jets (optional): Defaults to True.
+            filter_higgs (optional): Defaults to True.
 
         Returns:
             (None)
         '''
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=False)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=filter_trigger)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=filter_vertex)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=filter_muons)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=filter_jpsi)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
                 if self.SAMPLE=='MC_SIG':
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
-                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=False)
+                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=filter_higgs)
             case _: pass
         return
     
-    def cut(self, cut, weights=True):
+    def cut(self, cut, define_col='', define_exp='', weights=True):
         '''Filter the internal RDF using the cut expression.
 
         The internal self._cutflow object is updated when the cut is applied.
 
         Args:
             cut (str): String expression for the cut filter.
+            define_col (str, optional): Create a new RDF column by this name.
+                If '', no definition is created.
+                Defaults to ''.
+            define_exp (str, optional): The RDF column definition.
+                Defaults to ''.
             weights (bool, optional): Whether to use weights in the computation
                 of the cut flow and the number of events.
                 In order to use this, there must be a 'w' column in the RDF.
@@ -301,6 +313,10 @@ class JPsiCCLoader:
         Returns:
             nevents (float): Number of events after the cut.
         '''
+        if define_col:
+            try: self._rdf = self._rdf.Define(str(define_col), str(define_exp))
+            except Exception as err:
+                print(err)
         try: self._rdf = self._rdf.Filter(cut)
         except Exception: raise Exception(f'The cut {cut} cannot be applied.')
         if weights:
@@ -924,32 +940,6 @@ class JPsiCCAnalyzer:
             loader.makeCutFlowPlot()
         return
 
-    def scanCut(self, var, scantype):
-        '''Scan the cut over a variable.
-
-        Args:
-            var (str): Name of the variable to scan over.
-            scantype (str): Type of scanning. Options are the following.
-                'floor': applies a lower limit
-                'ceiling': applies an upper limit
-                'window': applies a window
-
-        Raises:
-            ValueError: If the given scantype is not one of the options.
-        '''
-        # stats, vartype = 
-        pass
-    
-    def scanMultiCut(self, varlist):
-        '''Scan a selection of variables.
-
-        Args:
-            varlist (list(str)): List of variables to scan over.
-        '''
-        # for var in varlist:
-        #     for sample
-        pass
-
     def fitSignal(self, key_var, template):
         """Fit the signal RDF to a desired template.
 
@@ -980,12 +970,17 @@ if __name__=='__main__':
 
         case 'mcsig':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
-            mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
-            mcsig.defineColumnsRDF()
-            mcsig.snapshotRDF(user_sfx='no_filter')
-            # mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240802_WEIGHT.root')
-            # mcsig.makeHistos(genplots=True, cdf=True, save=True, draw=False)
-            # mcsig.makeCutFlowPlot()
+            # mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
+            # mcsig.defineColumnsRDF(filter_trigger=False, filter_vertex=False, filter_muons=False,
+            #                        filter_jpsi=False, filter_jets=False, filter_higgs=False)
+            # mcsig.snapshotRDF(user_sfx='no_filter')
+            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240822_WEIGHT_no_filter.root')
+            # # mcsig.cut('nJpsi > 0')
+            mcsig.makeHistos(genplots=True, cdf=True, save=True, draw=True, normSIG=False,
+                             keys=['nMuon', 'Jpsi_kin_pt', 'Jpsi_kin_mass', 'Jpsi_kin_eta'
+                                   'gen_muplus_pt', 'gen_muminus_pt', 'gen_muplus_eta', 'gen_muminus_eta'],
+                             user_sfx='no_filter')
+            # mcsig.snapshotRDF('snapshot_MC_SIG_2018_GF_v202407_20240821_WEIGHT_HLT_Dimuon20_Jpsi_Barrel_Seagulls.root')
         
         case 'allsnap':
             mcbkg = JPsiCCLoader('MC_BKG', 2018, '202406', 'GF')
@@ -1009,8 +1004,12 @@ if __name__=='__main__':
         case 'gen':
             mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
             mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240816_WEIGHT_no_filter.root')
-            # mcsig.cut('trigger>0')
-            mcsig.makeHistos(genplots=True, plot=True, draw=False, normSIG=False, cdf=True, save=True, user_sfx='no_filter')
+            mcsig.cut('nMuon<2')
+            mcsig.cut('gen_muplus_pt>3.5')
+            mcsig.cut('gen_muminus_pt>3.5')
+            # mcsig.cut('gen_muplus_eta>-2.4 && gen_muplus_eta<2.4')
+            # mcsig.cut('gen_muminus_eta>-2.4 && gen_muminus_eta<2.4')
+            mcsig.makeHistos(genplots=True, plot=True, draw=True, normSIG=False, cdf=False, save=True, user_sfx='nmuon<2+gen_muplus_pt>3.5+gen_muminus_pt>3.5')
 
         case 'allplots' | 'noweight' | 'cut':
             if preset=='noweight': use_weight, draw_indiv = False, False

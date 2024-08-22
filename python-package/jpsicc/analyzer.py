@@ -6,7 +6,7 @@ JPsiCC analysis-specific analyzer
 '''
 
 from kytools import jsonreader, rootpdf
-import rdfdefines
+from jpsicc import rdfdefines
 from datetime import date
 import os, pickle
 import matplotlib.pyplot as plt
@@ -181,7 +181,7 @@ class JPsiCCLoader:
             if cdf:
                 normed_histo1d = histo1d.Clone()
                 normed_histo1d.SetDirectory(0)
-                normed_histo1d.Scale(1/normed_histo1d.Integral())
+                if normSIG: normed_histo1d.Scale(1/normed_histo1d.Integral())
                 histo1d_cdf = normed_histo1d.GetCumulative()
                 model1d_cdf = (f'{hname}_cdf', f'{hdef["title"]}_cdf', hdef['bin'], hdef['xmin'], hdef['xmax'])
                 self._hists[f'{key}_cdf'] = histo1d_cdf
