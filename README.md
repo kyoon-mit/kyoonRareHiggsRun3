@@ -16,3 +16,8 @@ Singularity > cmsenv
 ```
 
 3. Clone this repository from GitHub and switch to this branch.
+
+4. Run ```init.sh```.
+```
+. init.sh
+```
