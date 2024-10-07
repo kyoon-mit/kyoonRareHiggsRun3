@@ -6,6 +6,10 @@
 
 # Compiled Dynamic libraries
 *.so
+*.pyc
 
 # Certificate files
 *.pem
+
+# ROOT files
+*.root
