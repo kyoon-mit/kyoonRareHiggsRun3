@@ -12,6 +12,7 @@ import os, pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
 import ROOT
+from time import process_time
 
 ROOT.EnableImplicitMT()
 
@@ -26,6 +27,7 @@ class JPsiCCLoader:
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
+        CMSSW (str): Version of the CMSSW.
         weights (bool): Whether to use weights.
     
     Raises:
@@ -34,7 +36,7 @@ class JPsiCCLoader:
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, SAMP, YEAR, VERS, CAT, weights=True):
+    def __init__(self, SAMP, YEAR, VERS, CAT, CMSSW, weights=True):
         match SAMP:
             case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
             case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
@@ -47,7 +49,7 @@ class JPsiCCLoader:
         if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
-        self.SAMPLE, self.YEAR, self.VERSION, self.CAT = SAMP, YEAR, VERS, CAT
+        self.SAMPLE, self.YEAR, self.VERSION, self.CAT, self.CMSSW = SAMP, YEAR, VERS, CAT, CMSSW
         self.SAMPLENAME = f'{self.SAMPLE}'
         self._weights = weights # bool
 
@@ -160,8 +162,12 @@ class JPsiCCLoader:
         '''
         for key, hdef in hist_dict.items():
             # Create Histo1D
-            hname = f'{hdef["name"]}_{self._sfx}{"_" if user_sfx else ""}{user_sfx}'
-            model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
+            try:
+                hname = f'{hdef["name"]}_{self._sfx}{"_" if user_sfx else ""}{user_sfx}'
+                model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
+            except KeyError:
+                print(f'Not drawing histogram for {key} because of KeyError.')
+                continue
             if draw: ROOT.gStyle.SetOptStat('eimruo')
             if self._weights: histo1d = self._rdf.Histo1D(model1d, hdef['name'], 'w')
             else: histo1d = self._rdf.Histo1D(model1d, hdef['name'])
@@ -257,8 +263,13 @@ class JPsiCCLoader:
         self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(rdf_runs, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
 
-    def defineColumnsRDF(self, filter_trigger=True, filter_vertex=True,
-                         filter_muons=True, filter_jpsi=True, filter_jets=True, filter_higgs=True):
+    def defineColumnsRDF(self,
+                         filter_trigger=True,
+                         filter_vertex=True,
+                         filter_muons=True,
+                         filter_jpsi=True,
+                         filter_jets=True,
+                         filter_higgs=True):
         '''Define columns for the internal RDF.
 
         The columns will be different depending on the category.
@@ -275,18 +286,24 @@ class JPsiCCLoader:
         Returns:
             (None)
         '''
+        start_time = process_time()
         match self.CAT:
             case 'GF':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, filter=filter_trigger)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self._branches, self._cutflow, filter=filter_vertex)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self._branches, self._cutflow, filter=filter_muons)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self._branches, self._cutflow, filter=filter_jpsi)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_triggers(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, filter=filter_trigger)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_vertex)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_muons)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_jpsi)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muon_jet_matching(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=False)
                 if self.SAMPLE=='MC_SIG':
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
-                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self._branches, self._cutflow, filter=filter_higgs)
+                    self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_higgs)
+            case 'NANOAOD_JETS':
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
             case _: pass
+        end_time = process_time()
+        print('{}INFO: defineColumnsRDF process time is {:.8f}s.{}'.format('\033[1;32m', end_time - start_time, '\033[0m'))
         return
     
     def cut(self, cut, define_col='', define_exp='', weights=True):
@@ -413,17 +430,22 @@ class JPsiCCLoader:
         Returns:
             (None)
         '''
+        start_time = process_time()
         if name=='': fname = f'snapshot_{self._sfx}{"_" if user_sfx else ""}{user_sfx}.root'
         else: fname = name
         self._rdf.Snapshot('Events', fname, self._branches)
         if not self._rdfbranches: self._rdfbranches = self._rdf.GetColumnNames()
+        self._snapshotname = fname
         print('{}INFO: a snapshot has been created. >> {} {}'.format('\033[1;33m', fname, '\033[0m'))
         if make_pkl:
             pklname = f'{fname.removesuffix(".root")}.pkl'
             with open(pklname, 'wb') as f:
                 pickle.dump(self._cutflow, f)
+            self._picklename = pklname
             print('{}INFO: a pickle has been created. >> {} {}'.format('\033[1;33m', pklname, '\033[0m'))
         print(self._cutflow)
+        end_time = process_time()
+        print('{}INFO: snapshotRDF process time is {:.8f}s.{}'.format('\033[1;32m', end_time - start_time, '\033[0m'))
         return
     
     def readSnapshot(self, filename, treename='Events', read_pkl=True):
@@ -496,7 +518,7 @@ class JPsiCCLoader:
             (None) or hist_dict (dict)
         '''
         hist_defs = jsonreader.get_object_from_json(anpath='JPsiCC',
-                                                    jsonname='rdf_hists.json',
+                                                    jsonname=rdfdefines.select_json_file(CMSSW=self.CMSSW),
                                                     keys=['NANOAOD_to_RDF'])
         hist_dict = dict()
         match self.CAT:
@@ -504,9 +526,12 @@ class JPsiCCLoader:
                 hist_dict.update(hist_defs['Jpsi'])
                 hist_dict.update(hist_defs['muon'])
                 hist_dict.update(hist_defs['vertex'])
+                hist_dict.update(hist_defs['jet'])
+                hist_dict.update(hist_defs['muon_jet_matching'])
                 if not self._DATA: hist_dict.update(hist_defs['higgs'])
                 if genplots: hist_dict.update(hist_defs['gen'])
-                # self.plot_hists(hist_defs['jet'])
+            case 'NANOAOD_JETS':
+                hist_dict.update(hist_defs['jet'])
             case _: pass
         if keys: hist_dict = {key: val for key, val in hist_dict.items() if key in keys}
         if plot: self.plot_hists(hist_dict, draw=draw, normSIG=normSIG, cdf=cdf, user_sfx=user_sfx)
@@ -761,7 +786,7 @@ class JPsiCCAnalyzer:
 
         for samp in samples:
             self._loaders[samp].plot_hists(hist_dict, draw=draw_indiv, user_sfx=user_sfx)
-        
+
         ROOT.gStyle.SetOptStat(0)
         for key, hdef in hist_dict.items():
             # Create canvas
@@ -955,54 +980,64 @@ if __name__=='__main__':
     preset = input()
     match preset:
         case 'mcbkg':
-            mcbkg = JPsiCCLoader('MC_BKG', 2018, '202406', 'GF')
+            trig = 'HLT_Dimuon0_Jpsi'
+            mcbkg = JPsiCCLoader('MC_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
-            mcbkg.defineColumnsRDF()
-            mcbkg.snapshotRDF()
-            mcbkg.makeCutFlowPlot()
+            mcbkg.defineColumnsRDF(filter_trigger=False, filter_vertex=False, filter_muons=False,
+                                   filter_jpsi=False, filter_jets=False, filter_higgs=False)
+            mcbkg.cut('trigger_05>0',
+                      define_col='trigger_05',
+                      define_exp=trig)
+            mcbkg.snapshotRDF(user_sfx=trig)
+            # mcbkg.readSnapshot(f'snapshot_MC_BKG_2018_GF_v202407_20240823_WEIGHT_{trig}.root')
+            mcbkg.makeHistos(genplots=True, cdf=True, save=True, draw=True, normSIG=False,
+                             keys=['nMuon', 'Jpsi_kin_pt', 'Jpsi_kin_mass', 'Jpsi_kin_eta', 'Muon_pt'],
+                                #    'gen_muplus_pt', 'gen_muminus_pt', 'gen_muplus_eta', 'gen_muminus_eta'],
+                             user_sfx=trig)
 
         case 'databkg':
-            databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
+            databkg = JPsiCCLoader('DATA_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             databkg.createDataRDF('event_spec_data_bkg_skim.json')
             databkg.defineColumnsRDF()
             databkg.snapshotRDF()
             databkg.makeCutFlowPlot()
 
         case 'mcsig':
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
-            # mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
-            # mcsig.defineColumnsRDF(filter_trigger=False, filter_vertex=False, filter_muons=False,
-            #                        filter_jpsi=False, filter_jets=False, filter_higgs=False)
-            # mcsig.snapshotRDF(user_sfx='no_filter')
-            mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240822_WEIGHT_no_filter.root')
+            # verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
+            mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
+            mcsig.defineColumnsRDF(filter_trigger=False, filter_vertex=False, filter_muons=False,
+                                   filter_jpsi=False, filter_jets=False, filter_higgs=False)
+            mcsig.snapshotRDF(user_sfx='no_filter')
+            # mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240919_WEIGHT_no_filter.root')
             # # mcsig.cut('nJpsi > 0')
-            mcsig.makeHistos(genplots=True, cdf=True, save=True, draw=True, normSIG=False,
-                             keys=['nMuon', 'Jpsi_kin_pt', 'Jpsi_kin_mass', 'Jpsi_kin_eta'
-                                   'gen_muplus_pt', 'gen_muminus_pt', 'gen_muplus_eta', 'gen_muminus_eta'],
-                             user_sfx='no_filter')
+            # mcsig.makeHistos(genplots=False, cdf=True, save=True, draw=True, normSIG=False,
+                            #  keys=['nMuon', 'Jpsi_kin_pt', 'Jpsi_kin_mass', 'Jpsi_kin_eta'
+                            #        'gen_muplus_pt', 'gen_muminus_pt', 'gen_muplus_eta', 'gen_muminus_eta'],
+                            #  user_sfx='no_filter')
             # mcsig.snapshotRDF('snapshot_MC_SIG_2018_GF_v202407_20240821_WEIGHT_HLT_Dimuon20_Jpsi_Barrel_Seagulls.root')
         
         case 'allsnap':
-            mcbkg = JPsiCCLoader('MC_BKG', 2018, '202406', 'GF')
+            mcbkg = JPsiCCLoader('MC_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             mcbkg.createWeightedRDF('run_spec_mc_bkg_2018.json', 'event_spec_mc_bkg_2018.json')
             mcbkg.defineColumnsRDF()
             mcbkg.snapshotRDF()
             mcbkg.makeCutFlowPlot()
             
-            databkg = JPsiCCLoader('DATA_BKG', 2018, '202406', 'GF')
+            databkg = JPsiCCLoader('DATA_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             databkg.createDataRDF('event_spec_data_bkg_skim.json')
             databkg.defineColumnsRDF()
             databkg.snapshotRDF()
             databkg.makeCutFlowPlot()
             
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             mcsig.createWeightedRDF('run_spec_mc_sig.json', 'event_spec_mc_sig.json')
             mcsig.defineColumnsRDF()
             mcsig.snapshotRDF()
             mcsig.makeCutFlowPlot()
 
         case 'gen':
-            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF')
+            mcsig = JPsiCCLoader('MC_SIG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
             mcsig.readSnapshot('snapshot_MC_SIG_2018_GF_v202407_20240816_WEIGHT_no_filter.root')
             mcsig.cut('nMuon<2')
             mcsig.cut('gen_muplus_pt>3.5')
@@ -1015,7 +1050,7 @@ if __name__=='__main__':
             if preset=='noweight': use_weight, draw_indiv = False, False
             else: use_weight, draw_indiv = True, True
             
-            an = JPsiCCAnalyzer(2018, '202407', 'GF', weights=use_weight)
+            an = JPsiCCAnalyzer(2018, '202407', 'GF', 'CMSSW_13_3_0', weights=use_weight)
             # an.readSnapshotSAMP('MC_BKG1', 'snapshot_MC_BKG_2018_GF_v202406_20240802_WEIGHT.root',
             #                     sample_name='BToJpsi_JPsiToMuMu_BMuonFilter_HardQCD_TuneCP5_13TeV-pythia8-evtgen+RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1+MINIAODSIM')
             # an.readSnapshotSAMP('MC_BKG2', 'snapshot_MC_BKG_2018_GF_v202406_20240802_WEIGHT.root',

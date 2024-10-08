@@ -68,19 +68,38 @@ def add_cut_flow(cut_flow_dict, cut_str, cut_nentries):
     cut_flow_dict[f'#{nth_entry} {cut_str}'] = float(cut_nentries)
     return cut_flow_dict
 
-def add_rdf_def(rdf, key, jsonname='rdf_defs.json'):
+def select_json_file(CMSSW):
+    '''Select JSON file version to use for RDF defines.
+
+    Returns:
+        jsonname (str): Name of the JSON file.
+    
+    Raises:
+        KeyError: If CMSSW version does not match any option.
+    '''
+    match CMSSW:
+        case 'CMSSW_13_3_0':
+            jsonname = 'rdf_defs.json'
+        case 'CMSSW_10_6_30':
+            jsonname = 'rdf_defs_old.json'
+        case _:
+            print(CMSSW)
+            raise KeyError('CMSSW version does not match any option.')
+    return jsonname
+
+def add_rdf_def(rdf, key, CMSSW):
     '''Add RDF definition and append to list of branches for snapshot.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
         key (str): Key to the definitions in the json file.
-        jsonname (str, optional): Name of JSON file.
-            Defaults to 'rdf_defs.json'.
+        CMSSW (str): Version of the CMSSW.
 
     Returns:
         new_rdf (ROOT.RDataFrame): Modified ROOT.RDataFrame object.
         branchlist (str): List of RDF branches in the histogram definitions.
     '''
+    jsonname = select_json_file(CMSSW=CMSSW)
     rdf_defs = jsonreader.get_object_from_json(anpath='JPsiCC',
                                                jsonname=jsonname,
                                                keys=['NANOAOD_to_RDF'])
@@ -89,13 +108,13 @@ def add_rdf_def(rdf, key, jsonname='rdf_defs.json'):
     new_rdf = rdf
     branches = []
     for rvar, rdict in rdf_defs[key].items():
-        if rdf['def']:
+        if rdict['def']:
             try: new_rdf = rdf.Define(rvar, rdict['def'])
             except:
                 print(f'WARNING: a column named \'{rvar}\' could not be defined, so it is renamed to \'{rvar}_user\' instead.')
-                new_rdf = rdf.Define(f'{rvar}_user', rdict['def'])
+                new_rdf = new_rdf.Define(f'{rvar}_user', rdict['def'])
                 branches.append(f'{rvar}_user')
-            branches.append(rvar)
+        branches.append(rvar)
     return new_rdf, branches
 
 def compute_sum_weights(rdf_runs, sample_name):
@@ -188,13 +207,14 @@ def rdf_def_weights(rdf_runs, rdf_events, branches=[], cut_flow_dict={}, data=Fa
     if not data: branches.append('genWeight')
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, filter=True):
+def rdf_def_triggers(rdf, CAT, YEAR, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     '''RDF define and filter with triggers.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
         CAT (str): Analysis category.
         YEAR (int): Year of data-taking.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -212,11 +232,12 @@ def rdf_def_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, filter=True)
             to an existing trigger.
     '''
     try:
-        new_rdf, branches = add_rdf_def(rdf=rdf, key=f'{CAT}_{YEAR}')
+        new_rdf, branches_trig = add_rdf_def(rdf=rdf, key=f'{CAT}_{YEAR}', CMSSW=CMSSW)
     except:
         raise ValueError(f'Trigger does not exist for the combination of {CAT} and {YEAR}.')
-    trigger_col_exp = f'{'trigger_user' if 'trigger_user' in branches else 'trigger'}'
+    trigger_col_exp = f'{"trigger_user" if "trigger_user" in branches else "trigger"}'
     new_rdf, cut_flow_dict = filter_rdf(new_rdf, cut_flow_dict, f'{trigger_col_exp} > 0', f'Trigger for {CAT}_{YEAR}', filter=filter)
+    branches += branches_trig
     branches += ['HLT_Dimuon20_Jpsi_Barrel_Seagulls',
                  'HLT_Dimuon25_Jpsi',
                  'HLT_Dimuon25_Jpsi_noCorrL1',
@@ -232,11 +253,12 @@ def rdf_def_triggers(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, filter=True)
                  'HLT_Dimuon0_Jpsi_NoVertexing_NoOS']
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_muons(rdf, branches=[], cut_flow_dict={}, filter=True):
+def rdf_def_muons(rdf, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     '''Muons RDF definition.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -249,14 +271,16 @@ def rdf_def_muons(rdf, branches=[], cut_flow_dict={}, filter=True):
         branches (list(str)): Updated list of TBranches.
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='muon')
+    new_rdf, branches_muons = add_rdf_def(rdf=rdf, key='muon', CMSSW=CMSSW)
+    branches += branches_muons
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}, filter=True):
+def rdf_def_jpsi(rdf, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     '''RDF definition for J/Psi.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -271,14 +295,16 @@ def rdf_def_jpsi(rdf, branches=[], cut_flow_dict={}, filter=True):
     '''
     load_functions('reco')
     new_rdf, cut_flow_dict = filter_rdf(rdf, cut_flow_dict, 'nJpsi>0', 'Event must contain at least one J/psi with the given purity criteria.', filter=filter)
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='Jpsi')
+    new_rdf, branches_jpsi = add_rdf_def(rdf=rdf, key='Jpsi', CMSSW=CMSSW)
+    branches += branches_jpsi
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_vertex(rdf, branches=[], cut_flow_dict={}, filter=True):
+def rdf_def_vertex(rdf, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     '''Vertex RDF definition.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -294,16 +320,18 @@ def rdf_def_vertex(rdf, branches=[], cut_flow_dict={}, filter=True):
     if filter: new_rdf = rdf.Filter('PV_npvsGood>0', 'Number of PVs must be at least 1.')
     else: new_rdf = rdf
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'PV_npvsGood>0', new_rdf.Sum('w').GetValue())
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='jpsi')
+    new_rdf, branches = add_rdf_def(rdf=rdf, key='vertex', CMSSW=CMSSW)
+    branches += branches_vertex
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False, filter=True):
+def rdf_def_jets(rdf, CAT, YEAR, CMSSW, branches=[], cut_flow_dict={}, data=False, filter=True):
     '''Jets RDF definition.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
         CAT (str): Analysis category.
         YEAR (int): Year of data-taking.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -323,25 +351,23 @@ def rdf_def_jets(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False, filt
             to an existing good jet definition.
     '''
     load_functions('reco')
-    match f'{CAT}_{YEAR}':
-        case 'GF_2018':
-            goodjets = '(Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)'
-        case _:
-            raise ValueError(f'Good-jets definition does not exist for the combination of {CAT} and {YEAR}.')
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='jets')
-    new_rdf = (rdf.Define('goodJets', goodjets)
-                  .Define('nGoodJets', 'Sum(goodJets)')
-    )
-    if filter:
-        new_rdf = new_rdf.Filter('nGoodJets>=2', 'Events must contain two jets from the charm quarks.')
-        cut_flow_dict = add_cut_flow(cut_flow_dict, 'nGoodJets>=2', new_rdf.Sum('w').GetValue())
+    try:
+        new_rdf, branches_goodjets = add_rdf_def(rdf=rdf, key=f'{CAT}_{YEAR}', CMSSW=CMSSW)
+        print('hello')
+    except:
+        raise ValueError(f'GoodJets definition does not exist for the combination of {CAT} and {YEAR}.')
+    new_rdf, branches_jets = add_rdf_def(rdf=new_rdf, key='jet', CMSSW=CMSSW)
+    new_rdf, cut_flow_dict = filter_rdf(new_rdf, cut_flow_dict, 'nGoodJets>=2', 'Events must contain two jets from the charm quarks.', filter=filter)
 
     # Applicable only for jets that have gen-level information
     if not data:
-        new_rdf, branches = add_rdf_def(rdf=new_rdf, key='jet_mconly')
+        new_rdf, branches_genjets = add_rdf_def(rdf=new_rdf, key='jet_mconly', CMSSW=CMSSW)
+    branches += branches_goodjets
+    branches += branches_jets
+    branches += branches_genjets
     return new_rdf, branches, cut_flow_dict
 
-def rdf_def_muon_jet_matching(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, data=False, filter=True):
+def rdf_def_muon_jet_matching(rdf, CAT, YEAR, CMSSW, branches=[], cut_flow_dict={}, data=False, filter=True):
     '''Jet-muon matching info RDF definition.
 
     This function will cause errors if the following two functions are not already
@@ -351,6 +377,7 @@ def rdf_def_muon_jet_matching(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, dat
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
         CAT (str): Analysis category.
         YEAR (int): Year of data-taking.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -366,15 +393,17 @@ def rdf_def_muon_jet_matching(rdf, CAT, YEAR, branches=[], cut_flow_dict={}, dat
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
     load_functions('reco')
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='muon_jet_matching')
+    new_rdf, branches_match = add_rdf_def(rdf=rdf, key='muon_jet_matching', CMSSW=CMSSW)
+    branches += branches_match
     return new_rdf, branches, cut_flow_dict
 
 
-def rdf_def_higgs(rdf, branches=[], cut_flow_dict={}, filter=True):
+def rdf_def_higgs(rdf, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     '''Higgs RDF definition.
 
     Args:
         rdf (ROOT.RDataFrame): The ROOT.RDataFrame object.
+        CMSSW (str): Version of the CMSSW.
         branches (list(str), optional): List of TBranches.
             Defaults to [].
         cut_flow_dict (dict(str: float), optional): The dictionary containing the cut flow.
@@ -388,7 +417,8 @@ def rdf_def_higgs(rdf, branches=[], cut_flow_dict={}, filter=True):
         cut_flow_dict (dict(str: float)): Updated dictionary containing the cut flow.
     '''
     load_functions('reco')
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='higgs')
+    new_rdf, branches_higgs = add_rdf_def(rdf=rdf, key='higgs', CMSSW=CMSSW)
+    branches += branches_higgs
     return new_rdf, branches, cut_flow_dict
 
 def rdf_def_genpart(rdf, branches=[]): # TODO: rename branches so that they start with 'gen'
