@@ -320,7 +320,7 @@ def rdf_def_vertex(rdf, CMSSW, branches=[], cut_flow_dict={}, filter=True):
     if filter: new_rdf = rdf.Filter('PV_npvsGood>0', 'Number of PVs must be at least 1.')
     else: new_rdf = rdf
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'PV_npvsGood>0', new_rdf.Sum('w').GetValue())
-    new_rdf, branches = add_rdf_def(rdf=rdf, key='vertex', CMSSW=CMSSW)
+    new_rdf, branches_vertex = add_rdf_def(rdf=rdf, key='vertex', CMSSW=CMSSW)
     branches += branches_vertex
     return new_rdf, branches, cut_flow_dict
 
