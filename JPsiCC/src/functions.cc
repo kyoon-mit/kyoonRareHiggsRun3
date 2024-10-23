@@ -142,8 +142,6 @@ Vec_f NomUpDownVar(const float nom, const float up, const float down, float weig
   return res;
 }
 
-
-
 bool isGoodRunLS(const bool isData, const UInt_t run, const UInt_t lumi) {
 
   if(not isData) return true;
@@ -847,7 +845,8 @@ float SF_HLT_leg(float pt, int idParticle, int nomUpDowm) {
   TH1* h_sf;
 
   if(idParticle == 22) h_sf = myTH1_photon;
-  if(idParticle == 15) h_sf = myTH1_twoProng;
+  else if(idParticle == 15) h_sf = myTH1_twoProng;
+  else h_sf = 0;
 
   float trgSF = 1.0;
   int ptbin = std::max(1, std::min(h_sf->GetNbinsX(), h_sf->GetXaxis()->FindBin(pt)));
@@ -983,7 +982,7 @@ float getPolAngle(const ULong64_t event_, int nSlot) {
 stdVec_i jetCloseFar(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet_phi, const Vec_f& jet_m,
                      const Vec_f& jpsi_pt, const Vec_f& jpsi_eta, const Vec_f& jpsi_phi, const Vec_f& jpsi_m) {
 
-  unsigned int indexClose = -1;
+  int indexClose = -1;
 
   for (unsigned int idx = 0; idx < jet_pt.size(); ++idx) {
     float dRJetPhi = deltaR(jet_eta[idx], jet_phi[idx], jpsi_eta[0], jpsi_phi[0]);
@@ -999,12 +998,37 @@ stdVec_i jetCloseFar(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet
 
 }
 
+stdVec_i jetCvLIndex(const Vec_f& jet_cvl) {
+
+  int index_lead_cvl = -1;
+  int index_sublead_cvl = -1;
+  float lead_cvl = 0;
+  float sublead_cvl = 0;
+  for (unsigned int idx = 0; idx < jet_cvl.size(); ++idx) {
+    if (lead_cvl < jet_cvl[idx]) {
+      lead_cvl = jet_cvl[idx];
+      index_lead_cvl=idx;
+    } else if (sublead_cvl < jet_cvl[idx]) {
+      sublead_cvl = jet_cvl[idx];
+      index_sublead_cvl=idx;
+    }
+  }
+
+  stdVec_i idx(2, -1); // initialize a vector of size 2 filled with the value of -1 
+
+  idx[0] = index_lead_cvl;
+  idx[1] = index_sublead_cvl ;
+
+  return idx;
+
+}
+
 float Minv3massiveCorr(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet_phi, const Vec_f& jet_m,
                        const Vec_f& jet_cRegCorr,
                        int& jet_muonIdx1, int& jet_muonIdx2,
                        const Vec_f& muon_pt, const Vec_f& muon_eta, const Vec_f& muon_phi,
-                       const Vec_f& jpsi_muon1_pt, const Vec_f& jpsi_muon1_eta, const Vec_f& jpsi_muon1_phi,
-                       const Vec_f& jpsi_muon2_pt, const Vec_f& jpsi_muon2_eta, const Vec_f& jpsi_muon2_phi,
+                      //  const Vec_f& jpsi_muon1_pt, const Vec_f& jpsi_muon1_eta, const Vec_f& jpsi_muon1_phi,
+                      //  const Vec_f& jpsi_muon2_pt, const Vec_f& jpsi_muon2_eta, const Vec_f& jpsi_muon2_phi,
                        const Vec_f& jpsi_pt, const Vec_f& jpsi_eta, const Vec_f& jpsi_phi, const Vec_f& jpsi_m,
                        int indexCloseScale) {
 
@@ -1028,3 +1052,66 @@ float Minv3massiveCorr(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& j
   }
   return invMass;
 }
+
+float HiggsMassFourBody(float jet1_pt, float jet1_eta, float jet1_phi, float jet1_mass,
+                        float jet2_pt, float jet2_eta, float jet2_phi, float jet2_mass,
+                        float mu1_pt,  float mu1_eta,  float mu1_phi,  float mu1_mass,
+                        float mu2_pt,  float mu2_eta,  float mu2_phi,  float mu2_mass,
+                        bool mu1_in_jet1, bool mu2_in_jet1, bool mu1_in_jet2, bool mu2_in_jet2) {
+  PtEtaPhiMVector jet1(jet1_pt, jet1_eta, jet1_phi, jet1_mass);
+  PtEtaPhiMVector jet2(jet2_pt, jet2_eta, jet2_phi, jet2_mass);
+  PtEtaPhiMVector higgs = jet1 + jet2;
+  if (!mu1_in_jet1 && !mu1_in_jet2) {
+    PtEtaPhiMVector mu1(mu1_pt, mu1_eta, mu1_phi, mu1_mass);
+    higgs += mu1;
+  }
+  if (!mu2_in_jet1 && !mu2_in_jet2) {
+    PtEtaPhiMVector mu2(mu2_pt, mu2_eta, mu2_phi, mu2_mass);
+    higgs += mu2;
+  }
+  return higgs.M();
+}
+
+
+/******************************************************************************/
+bool CheckObjectJetOverlap(float obj_eta, float obj_phi, float jet_eta, float jet_phi, float jet_R=0.4) {
+  return (deltaR(obj_eta, obj_phi, jet_eta, jet_phi) <= jet_R);
+}
+
+
+PtEtaPhiMVector JpsiFromBestMuons(const Vec_f& muon_pt, const Vec_f& muon_eta, const Vec_f& muon_phi, const Vec_f& muon_mass,
+                                  float jpsi_mass = 3.09690) {
+  float min_m_diff = 10e9;
+  PtEtaPhiMVector jpsi_cand(0., 0., 0., -1.);
+  for (unsigned int idx = 0; idx < muon_pt.size(); ++idx) {
+    for (unsigned int jdx = idx+1; jdx < muon_pt.size(); ++jdx) {
+      PtEtaPhiMVector mu1(muon_pt[idx], muon_eta[idx], muon_phi[idx], muon_mass[idx]);
+      PtEtaPhiMVector mu2(muon_pt[jdx], muon_eta[jdx], muon_phi[jdx], muon_mass[jdx]);
+      PtEtaPhiMVector mu1_mu2 = mu1 + mu2;
+      float m_diff = abs(jpsi_mass - mu1_mu2.M());
+      if (m_diff < min_m_diff) {
+        jpsi_cand = mu1_mu2;
+        min_m_diff = m_diff;
+      }
+    }
+  }
+  return jpsi_cand;
+}
+
+
+bool CheckMuonJetMuonMatch(float muon1_pt, float muon1_eta, float muon1_phi,
+                           const Vec_f& muon_pt, const Vec_f& muon_eta, const Vec_f& muon_phi, const int& jet_muonIdx) {
+  std::cout << muon_pt.size() << " " << muon_eta.size() << " " << muon_phi.size() << std::endl;
+  if (muon_pt.size() < 1) {return false;}
+  float dR = deltaR(muon1_eta, muon1_phi, muon_eta[jet_muonIdx], muon_phi[jet_muonIdx]);
+  float dpt = abs(muon1_pt - muon_pt[jet_muonIdx]);
+  if (jet_muonIdx == -1) {return false;}
+  if (dR< 0.02 && dpt < 2) {return true;}
+  else {return false;}
+}
+
+
+/******************************************************************************/
+// int CharmJetPtIndex(const Vec_i& parton_flavor, const Vec_f& jet_pt) {
+//   for (int flv : parton_flavor)
+// }
