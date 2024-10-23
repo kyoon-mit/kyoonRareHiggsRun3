@@ -351,20 +351,14 @@ def rdf_def_jets(rdf, CAT, YEAR, CMSSW, branches=[], cut_flow_dict={}, data=Fals
             to an existing good jet definition.
     '''
     load_functions('reco')
-    try:
-        new_rdf, branches_goodjets = add_rdf_def(rdf=rdf, key=f'{CAT}_{YEAR}', CMSSW=CMSSW)
-        print('hello')
-    except:
-        raise ValueError(f'GoodJets definition does not exist for the combination of {CAT} and {YEAR}.')
-    new_rdf, branches_jets = add_rdf_def(rdf=new_rdf, key='jet', CMSSW=CMSSW)
+    new_rdf, branches_jets = add_rdf_def(rdf=rdf, key='jet', CMSSW=CMSSW)
     new_rdf, cut_flow_dict = filter_rdf(new_rdf, cut_flow_dict, 'nGoodJets>=2', 'Events must contain two jets from the charm quarks.', filter=filter)
+    branches += branches_jets
 
     # Applicable only for jets that have gen-level information
     if not data:
         new_rdf, branches_genjets = add_rdf_def(rdf=new_rdf, key='jet_mconly', CMSSW=CMSSW)
-    branches += branches_goodjets 
-    branches += branches_jets 
-    branches += branches_genjets
+        branches += branches_genjets
     return new_rdf, branches, cut_flow_dict
 
 def rdf_def_muon_jet_matching(rdf, CAT, YEAR, CMSSW, branches=[], cut_flow_dict={}, data=False, filter=True):

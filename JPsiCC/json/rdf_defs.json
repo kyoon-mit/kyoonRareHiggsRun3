@@ -3,12 +3,10 @@
     {
         "GF_2018":
         {
-            "goodJets": {"def": "(Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)"},
             "trigger": {"def": "HLT_Dimuon25_Jpsi"}
         },
         "NANOAOD_JETS_2018":
         {
-            "goodJets": {"def": "(Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)"},
             "trigger": {"def": "HLT_Dimuon25_Jpsi"}
         },
         "Jpsi":
@@ -44,7 +42,7 @@
             "Jpsi_leadingChargedDzMaxPt2": {"def": "", "name": "Jpsi_leadingChargedDzMaxPt2", "title": "Jpsi Dz subLeadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
             "nJpsi": {"def": "", "name": "nJpsi", "title": "nJpsi", "bin": 5, "xmin": 0.0, "xmax": 5.0},
             "Jpsi_muon1_muon2_dR": {"def": "deltaR(Jpsi_muon1_eta[0], Jpsi_muon1_phi[0], Jpsi_muon2_eta[0], Jpsi_muon2_phi[0])",
-                                    "name": "Jpsi_muon1_muon2_dR", "title": "dR between #mu #mu; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "name": "Jpsi_muon1_muon2_dR", "title": "dR between #mu #mu; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "alt_Jpsi_cand": {"def": "JpsiFromBestMuons(Muon_pt, Muon_eta, Muon_phi, Muon_mass)"},
             "alt_Jpsi_kin_mass": {"def": "alt_Jpsi_cand.M()", "name": "alt_Jpsi_kin_mass", "title": "alt_Jpsi mass; m_{#mu^{+}#mu^{-}} (GeV); N_{Events}", "bin": 120, "xmin": 1.5, "xmax": 4.5},
             "alt_Jpsi_kin_pt": {"def": "alt_Jpsi_cand.Pt()", "name": "alt_Jpsi_kin_pt", "title": "alt_Jpsi p_{T}; p_{T} {#mu^{+}#mu^{-}} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},        
@@ -63,6 +61,7 @@
         },
         "jet":
         {
+            "goodJets": {"def": "(Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1)"},
             "nJet": {"def": "", "name": "nJet", "title": "nJet; ak4 PFJets CHS with JECs applied, after basic selection (pt > 15); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "nGoodJets": {"def": "Sum(goodJets)", "name": "nGoodJets", "title": "nGoodJets; number of jets matching (Jet_pt > 30 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1); N_{Events}", "bin": 5, "xmin": 0.0, "xmax": 50.0},
             "goodJetPt": {"def": "Jet_pt[goodJets]", "name": "goodJetPt", "title": "Good Jet p_{T}; good jet p_{T}} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
@@ -91,9 +90,11 @@
             "jet1_jet2_mass": {"def": "Minv(goodJetPt, goodJetEta, goodJetPhi, goodJetMass)",
                                "name": "jet1_jet2_mass", "title": "Invariant mass of the jets; AK4 jet eta (GeV); N_{Events}", "bin": 500, "xmin": 0.0, "xmax": 500.0},
             "index_CloseFar": {"def": "jetCloseFar(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass)"},
+            "index_CvL": {"def": "jetCvLIndex(goodJetCvL)"},
+            "index_leading_CvL": {"def": "index_CvL[0]", "name": "index_leading_CvL", "title": "index of the leading CvL jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
+            "index_subleading_CvL": {"def": "index_CvL[1]", "name": "index_subleading_CvL", "title": "index of the subleading CvL jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
             "jetClose_nMuons": {"def": "Jet_nMuons[goodJets][index_CloseFar[0]]", "name": "jetClose_nMuons", "title": "Close nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.00, "xmax": 10.0},
             "jetFar_nMuons": {"def": "Jet_nMuons[goodJets][index_CloseFar[1]]", "name": "jetFar_nMuons", "title": "Far nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
-            "Jet_nConstituents": {"def": "Sum(Jet_nConstituents[goodJets])", "name": "jet_nConstituents", "title": "Jet nConstituents; nConstituents; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "jetClose_nElectrons": {"def": "Jet_nElectrons[goodJets][index_CloseFar[0]]", "name": "jetClose_nElectrons", "title": "Close Electrons; nElectron; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
             "jetFar_nElectrons": {"def": "Jet_nElectrons[goodJets][index_CloseFar[1]]", "name": "jetFar_nElectrons", "title": "Far Electrons; nElectrons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
             "jetClose_pt": {"def": "goodJetPt[index_CloseFar[0]]", "name": "jetClose_pt", "title": "Jet Close; AK4 pt Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
@@ -123,6 +124,7 @@
         {
             "jet1_partonFlavour": {"def": "abs(goodJet_partonFlavour[0])", "name": "jet1_partonFlavour", "title": "Leading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "jet2_partonFlavour": {"def": "abs(goodJet_partonFlavour[1])", "name": "jet2_partonFlavour", "title": "Subleading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
+            "charms_are_jet1_and_2": {"def": "((abs(goodJet_partonFlavour[0])==4) && (abs(goodJet_partonFlavour[1])==4)) ? 1: 0", "name": "charms_are_jet1_and_2", "title": "Whether charm jets are leading AND subleading jets", "bin": 2, "xmin": -0.5, "xmax": 1.5},
             "jetClose_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_CloseFar[0]])", "name": "jetClose_partonFlavour", "title": "Jet Close; AK4 partonFlavour Close; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},   
             "jetFar_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_CloseFar[1]])", "name": "jetFar_partonFlavour", "title": "Jet Far; AK4 partonFlavour Far; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "jetFar_ptCharm": {"def": "(abs(goodJet_partonFlavour[index_CloseFar[1]])==4) ? Jet_cRegCorr[goodJets][index_CloseFar[1]] * goodJetPt[index_CloseFar[1]]: -1.", "name": "jetFar_ptCharm", "title": "Jet Far; AK4 pt Far (charm)(GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
@@ -147,7 +149,7 @@
         },
         "higgs":
         {
-            "higgs_mass_corr": {"def": "Minv3massiveCorr(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jet_cRegCorr[goodJets], Jet_muonIdx1[goodJets][index_CloseFar[0]], Jet_muonIdx2[goodJets][index_CloseFar[0]], Muon_pt, Muon_eta, Muon_phi, Jpsi_muon1_pt, Jpsi_muon1_eta, Jpsi_muon1_phi, Jpsi_muon2_pt, Jpsi_muon2_eta, Jpsi_muon2_phi, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass, index_CloseFar[0])",
+            "higgs_mass_corr": {"def": "Minv3massiveCorr(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jet_cRegCorr[goodJets], Jet_muonIdx1[goodJets][index_CloseFar[0]], Jet_muonIdx2[goodJets][index_CloseFar[0]], Muon_pt, Muon_eta, Muon_phi, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass, index_CloseFar[0])",
                                 "name": "higgs_mass_corr", "title": "Higgs mass computed with the Minv3massiveCorr function", "bin": 250, "xmin": 0.0, "xmax": 250.0}
         },
         "gen":

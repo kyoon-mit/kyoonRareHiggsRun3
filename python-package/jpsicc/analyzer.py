@@ -528,7 +528,8 @@ class JPsiCCLoader:
                 hist_dict.update(hist_defs['vertex'])
                 hist_dict.update(hist_defs['jet'])
                 hist_dict.update(hist_defs['muon_jet_matching'])
-                if not self._DATA: hist_dict.update(hist_defs['higgs'])
+                hist_dict.update(hist_defs['higgs'])
+                if not self._DATA: hist_dict.update(hist_defs['jet_mconly'])
                 if genplots: hist_dict.update(hist_defs['gen'])
             case 'NANOAOD_JETS':
                 hist_dict.update(hist_defs['jet'])
