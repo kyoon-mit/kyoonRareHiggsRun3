@@ -46,7 +46,6 @@ class RooWorkspaceCreator:
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
         self.SAMPLE, self.YEAR, self.VERSION, self.CAT, self.CMSSW = SAMP, YEAR, VERS, CAT, CMSSW
-        self.SAMPLENAME = f'{self.SAMPLE}'
         self._weights = weights # bool
 
         today = date.today()
@@ -54,11 +53,42 @@ class RooWorkspaceCreator:
         self._anpath = 'JPsiCC'
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
         self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
-        self._wname = f'workspace_{self._sfx}' # Name of the ROOT workspace
-        self._wfilename = f'{self._wname}.root' # Name of the ROOT workspace file
+        self._wname = f'w' # Name of the ROOT workspace
+        self._wfilename = f'workspace_{self._sfx}.root' # Name of the ROOT workspace file
         w = ROOT.RooWorkspace(self._wname)
         w.writeToFile(self._wfilename)
         print('{}INFO: a workspace file has been created. >> {} {}'.format('\033[1;33m', self._wfilename, '\033[0m'))
+
+    def __importToWorkspace(self, *args):
+        '''Internal method for importing objects into the workspace.
+
+        Args:
+            *args (TObject): The objects to import are passed through here.
+
+        Returns:
+            (None)
+        '''
+        wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
+        w = wfile.Get(self._wname)
+        for arg in args:
+            w.Import(arg)
+        w.writeToFile(self._wfilename, recreate=True)
+        wfile.Close()
+        return
+
+    def __readVarFromWorkspace(self, var_name):
+        '''Internal method for reading an variable from the workspace.
+
+        Args:
+            var_name (str): The name of the variable to read.
+
+        Returns:
+            var (ROOT.RooRealVar): The variable.
+        '''
+        wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
+        w = wfile.Get(self._wname)
+        var = w.var(var_name)
+        return var
 
     def addVar(self, var_name, var_title, value, var_min, var_max, unit=''):
         '''Add a variable to the workspace.
@@ -80,21 +110,40 @@ class RooWorkspaceCreator:
         if not (var_min < var_max):
             raise ValueError('Variable lower bound should be smaller than upper bound.')
         var = ROOT.RooRealVar(var_name, var_title, value, var_min, var_max, unit)
-        wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
-        w = wfile.Get(self._wname)
-        w.Import(var)
-        w.writeToFile(self._wfilename, recreate=True)
-        wfile.Close()
+        self.__importToWorkspace(var)
+        return
 
-    def addData(self, filename, varname, binned=True):
+    def addData(self, filename, treename, col_name, var_name, binned=True):
         '''Add data to the workspace.
 
         If binned, it will add a RooDataHist. Otherwise, it will add a RooDataSet.
+        For reference, see https://root.cern/doc/v632/rf408__RDataFrameToRooFit_8py_source.html.
+
+        Args:
+            filename (str): Name of the file containing the data.
+            treename (str): Name of the ROOT.TTree.
+            col_name (str): Name of the column of the data.
+            var_name (str): Name of the variable as appears in the workspace.
+        
+        Returns:
+            (None)
         '''
-        pass
+        rdf = ROOT.RDataFrame(treename, filename)
+        var = self.__readVarFromWorkspace(var_name)
+        data_name = f'data{"hist" if binned else "set"}_{self.SAMPLE}_{self.YEAR}_{self.CAT}'
+        data_title = data_name
+        if binned:
+            data_maker = ROOT.RooDataHistHelper(data_name, data_title, ROOT.RooArgSet(var))
+        else:
+            data_maker = ROOT.RooDataSetHelper(data_name, data_title, ROOT.RooArgSet(var))
+        data_result = rdf.Book(ROOT.std.move(data_maker), [col_name])
+        data = data_result.GetValue()
+        self.__importToWorkspace(data)
+        return
 
     def defineRegions(self, SR_low, SR_high, CR_low, CR_high):
         '''Define signal and control regions for the key observable.
+        TODO: make regions in workspace.
 
         Args:
             SR_low (float): Lower bound of the signal region.
@@ -131,9 +180,10 @@ class RooWorkspaceCreator:
         '''
         pass
 
-    def createWorkspace():
-        pass
-
 if __name__=='__main__':
+    verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
+    snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
+    snapshot_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
     rwc = RooWorkspaceCreator('MC_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
     rwc.addVar('mH', 'm_{#mu#bar{#mu}jj}', 125, 30, 200, 'GeV/c^2')
+    rwc.addData(snapshot_name, 'Events', 'higgs_mass_corr', 'mH')
