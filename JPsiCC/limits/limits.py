@@ -2,7 +2,7 @@
 limits
 +++++++++++++++++++++++++++++++++++++++++++
 
-Library to compute limits
+Module to compute limits.
 '''
 
 import os
@@ -55,6 +55,7 @@ class RooWorkspaceCreator:
         self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         self._wname = f'w' # Name of the ROOT workspace
         self._wfilename = f'workspace_{self._sfx}.root' # Name of the ROOT workspace file
+        self._SR_low, self._SR_high, self._CR_low, self._CR_high = 120, 130, 110, 140 # default values
         w = ROOT.RooWorkspace(self._wname)
         w.writeToFile(self._wfilename)
         print('{}INFO: a workspace file has been created. >> {} {}'.format('\033[1;33m', self._wfilename, '\033[0m'))
@@ -76,19 +77,33 @@ class RooWorkspaceCreator:
         wfile.Close()
         return
 
-    def __readVarFromWorkspace(self, var_name):
-        '''Internal method for reading an variable from the workspace.
+    def __readFromWorkspace(self, obj_name, obj_type):
+        '''Internal method for reading an object from the workspace.
 
         Args:
-            var_name (str): The name of the variable to read.
+            obj_name (str): The name of the object to read.
+            obj_type (str): The type of the object to read. The options are:
+                'var', 'pdf', or 'data'.
 
         Returns:
-            var (ROOT.RooRealVar): The variable.
+            object (ROOT.RooRealVar, ROOT.RooAbsPdf, or ROOT.RooAbsData): The object.
+
+        Raises:
+            ValueError: If obj_type is not one of the following:
+                'var', 'pdf', or 'data'.
         '''
         wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
         w = wfile.Get(self._wname)
-        var = w.var(var_name)
-        return var
+        match obj_type:
+            case 'var':
+                obj = w.var(obj_name)
+            case 'pdf':
+                obj = w.pdf(obj_name)
+            case 'data':
+                obj = w.data(obj_name)
+            case _:
+                raise ValueError('Invalid obj_type.')
+        return obj
 
     def addVar(self, var_name, var_title, value, var_min, var_max, unit=''):
         '''Add a variable to the workspace.
@@ -129,8 +144,8 @@ class RooWorkspaceCreator:
             (None)
         '''
         rdf = ROOT.RDataFrame(treename, filename)
-        var = self.__readVarFromWorkspace(var_name)
-        data_name = f'data{"hist" if binned else "set"}_{self.SAMPLE}_{self.YEAR}_{self.CAT}'
+        var = self.__readFromWorkspace(var_name, 'var')
+        data_name = f'data{"hist" if binned else "set"}_{self.SAMPLE}_{self.YEAR}_{self.CAT}' #TODO: might need to make it more comprehensive
         data_title = data_name
         if binned:
             data_maker = ROOT.RooDataHistHelper(data_name, data_title, ROOT.RooArgSet(var))
@@ -170,15 +185,69 @@ class RooWorkspaceCreator:
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = SR_low, SR_high, CR_low, CR_high
         return
 
-    def specifyFit():
-        '''Specify what fit to create in the workspace.
+    def addPDF(self, pdf_type, var_name):
+        '''Add PDF to the workspace.
+
+        The PDF type is specified. The PDF is fitted to the existing data.
 
         Args:
 
         Returns:
 
         '''
-        pass
+        var = self.__readFromWorkspace(var_name, 'var')
+        match pdf_type:
+            case 'gaussian':
+                mu = ROOT.RooRealVar('gaussian_mu', 'guassian_mu', self._SR_low, self._SR_high)
+                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', self._SR_low, self._SR_high)
+                pdf = ROOT.RooGaussian('gaussian', 'gaussian', var, mu, sigma)
+                self.__importToWorkspace(pdf)
+            case 'double_gaussian':
+                pass
+            case 'crystal_ball':
+                pass
+        return
+
+    def fitPDF(self, pdf_type, data_name, max_tries=10, strategy=1):
+        '''
+        '''
+        pdf = self.__readFromWorkspace(pdf_type, 'pdf')
+        data = self.__readFromWorkspace(data_name, 'data')
+        params = pdf.getParameters(0)
+        status = -1
+        print ('Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
+        for ntries in range(1, max_tries+1):
+            print ('{}kytools: Fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
+            fit_result = pdf.fitTo(data,
+                                   ROOT.RooFit.Save(True),
+                                   ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
+                                   ROOT.RooFit.Strategy(strategy),
+                                   ROOT.RooFit.PrintLevel(-1),
+                                   ROOT.RooFit.Warnings(False),
+                                   ROOT.RooFit.PrintEvalErrors(-1))
+            status = fit_result.status()
+            if (status != 0):                                                                                                                              
+                params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
+                ntries += 1
+            else:
+                break
+        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', status, '\033[0m'))
+        match status:
+            case 0:
+                print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+            case 1:
+                print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+            case 2:
+                print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+            case 3:
+                print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+            case 4:
+                print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+            case 5:
+                print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
+            case _:
+                print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        return
 
 if __name__=='__main__':
     verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
@@ -187,3 +256,5 @@ if __name__=='__main__':
     rwc = RooWorkspaceCreator('MC_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
     rwc.addVar('mH', 'm_{#mu#bar{#mu}jj}', 125, 30, 200, 'GeV/c^2')
     rwc.addData(snapshot_name, 'Events', 'higgs_mass_corr', 'mH')
+    rwc.addPDF('gaussian', 'mH')
+    rwc.fitPDF('gaussian', f'datahist_{rwc.SAMPLE}_{rwc.YEAR}_{rwc.CAT}')
