@@ -18,8 +18,8 @@ class RooWorkspaceCreator:
     To create a RooWorkspace for a given sample.
 
     Args:
-        SAMP (str): Either one of the following options.
-            'DATA_BKG', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
+        # SAMP (str): Either one of the following options.
+        #     'DATA_BKG', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
@@ -27,32 +27,32 @@ class RooWorkspaceCreator:
         weights (bool): Whether weights were used.
 
     Raises:
-        ValueError: If the string provided for SAMP is not among the options.
+        # ValueError: If the string provided for SAMP is not among the options.
         TypeError: If the value provided for YEAR is not an integer.
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, SAMP, YEAR, VERS, CAT, CMSSW, weights=True):
-        match SAMP:
-            case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
-            case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
-            case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
-            case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
-            case 'MC_BKG3': self._DATA, self._MODE = False, 'BKG'
-            case 'MC_BKG4': self._DATA, self._MODE = False, 'BKG'
-            case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
-            case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
+    def __init__(self, YEAR, VERS, CAT, CMSSW, weights=True):
+        # match SAMP:
+        #     case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
+        #     case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
+        #     case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
+        #     case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
+        #     case 'MC_BKG3': self._DATA, self._MODE = False, 'BKG'
+        #     case 'MC_BKG4': self._DATA, self._MODE = False, 'BKG'
+        #     case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
+        #     case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
         if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
-        self.SAMPLE, self.YEAR, self.VERSION, self.CAT, self.CMSSW = SAMP, YEAR, VERS, CAT, CMSSW
+        self.YEAR, self.VERSION, self.CAT, self.CMSSW = YEAR, VERS, CAT, CMSSW
         self._weights = weights # bool
 
         today = date.today()
         self._date = f'{today.year}{today.month:02}{today.day:02}'
         self._anpath = 'JPsiCC'
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
-        self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
+        self._sfx = f'{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         self._wname = f'w' # Name of the ROOT workspace
         self._wfilename = f'workspace_{self._sfx}.root' # Name of the ROOT workspace file
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = 120, 130, 110, 140 # default values
@@ -128,24 +128,26 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(var)
         return
 
-    def addData(self, filename, treename, col_name, var_name, binned=True):
+    def addData(self, SAMP, filename, treename, col_name, var_name, binned=True):
         '''Add data to the workspace.
 
         If binned, it will add a RooDataHist. Otherwise, it will add a RooDataSet.
         For reference, see https://root.cern/doc/v632/rf408__RDataFrameToRooFit_8py_source.html.
 
         Args:
+            SAMP (str): Name of the sample.
             filename (str): Name of the file containing the data.
             treename (str): Name of the ROOT.TTree.
             col_name (str): Name of the column of the data.
             var_name (str): Name of the variable as appears in the workspace.
+            binned (bool, optional): Whether the data is binned. Defaults to True.
         
         Returns:
             (None)
         '''
         rdf = ROOT.RDataFrame(treename, filename)
         var = self.__readFromWorkspace(var_name, 'var')
-        data_name = f'data{"hist" if binned else "set"}_{self.SAMPLE}_{self.YEAR}_{self.CAT}' #TODO: might need to make it more comprehensive
+        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
         data_title = data_name
         if binned:
             data_maker = ROOT.RooDataHistHelper(data_name, data_title, ROOT.RooArgSet(var))
@@ -185,37 +187,41 @@ class RooWorkspaceCreator:
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = SR_low, SR_high, CR_low, CR_high
         return
 
-    def addPDF(self, pdf_type, var_name):
+    def addPDF(self, SAMP, pdf_type, var_name, max_tries=10, strategy=1, binned=True):
         '''Add PDF to the workspace.
 
         The PDF type is specified. The PDF is fitted to the existing data.
 
         Args:
+            SAMP (str): Name of the sample.
+            pdf_type (str):
+            var_name (str):
+            max_tries (int, optional):
+            strategy (int, optional): 
+            binned (bool, optional): Whether the data is binned. Defaults to True
 
         Returns:
 
+        Raises:
+            ValueError: If pdf_type does not match an existing option.
         '''
         var = self.__readFromWorkspace(var_name, 'var')
         match pdf_type:
             case 'gaussian':
                 mu = ROOT.RooRealVar('gaussian_mu', 'guassian_mu', self._SR_low, self._SR_high)
-                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', self._SR_low, self._SR_high)
+                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', 10)
                 pdf = ROOT.RooGaussian('gaussian', 'gaussian', var, mu, sigma)
-                self.__importToWorkspace(pdf)
             case 'double_gaussian':
                 pass
             case 'crystal_ball':
                 pass
-        return
-
-    def fitPDF(self, pdf_type, data_name, max_tries=10, strategy=1):
-        '''
-        '''
-        pdf = self.__readFromWorkspace(pdf_type, 'pdf')
-        data = self.__readFromWorkspace(data_name, 'data')
+            case _:
+                raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
         status = -1
-        print ('Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
+        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
+        data = self.__readFromWorkspace(data_name, 'data')
+        print ('{}Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
         for ntries in range(1, max_tries+1):
             print ('{}kytools: Fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
             fit_result = pdf.fitTo(data,
@@ -247,14 +253,19 @@ class RooWorkspaceCreator:
                 print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
             case _:
                 print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        self.__importToWorkspace(pdf)
         return
+
+    def configPlot(self, SAMP):
+        '''Configure plot for each given sample.
+        '''
+        pass
 
 if __name__=='__main__':
     verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
     snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
-    snapshot_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
-    rwc = RooWorkspaceCreator('MC_BKG', 2018, '202407', 'GF', 'CMSSW_13_3_0')
+    sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
+    rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
     rwc.addVar('mH', 'm_{#mu#bar{#mu}jj}', 125, 30, 200, 'GeV/c^2')
-    rwc.addData(snapshot_name, 'Events', 'higgs_mass_corr', 'mH')
-    rwc.addPDF('gaussian', 'mH')
-    rwc.fitPDF('gaussian', f'datahist_{rwc.SAMPLE}_{rwc.YEAR}_{rwc.CAT}')
+    rwc.addData('MC_SIG', sig_data_name, 'Events', 'higgs_mass_corr', 'mH')
+    rwc.addPDF('MC_SIG', 'gaussian', 'mH')
