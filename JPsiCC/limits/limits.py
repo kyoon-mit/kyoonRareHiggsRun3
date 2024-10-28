@@ -32,7 +32,7 @@ class RooWorkspaceCreator:
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, YEAR, VERS, CAT, CMSSW, weights=True):
+    def __init__(self, YEAR: int, VERS: str, CAT: str, CMSSW: str, weights=True):
         # match SAMP:
         #     case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
         #     case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
@@ -52,6 +52,8 @@ class RooWorkspaceCreator:
         self._date = f'{today.year}{today.month:02}{today.day:02}'
         self._anpath = 'JPsiCC'
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
+        if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
+        self._plot_configs = {}
         self._sfx = f'{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         self._wname = f'w' # Name of the ROOT workspace
         self._wfilename = f'workspace_{self._sfx}.root' # Name of the ROOT workspace file
@@ -77,7 +79,7 @@ class RooWorkspaceCreator:
         wfile.Close()
         return
 
-    def __readFromWorkspace(self, obj_name, obj_type):
+    def __readFromWorkspace(self, obj_name: str, obj_type: str):
         '''Internal method for reading an object from the workspace.
 
         Args:
@@ -105,7 +107,7 @@ class RooWorkspaceCreator:
                 raise ValueError('Invalid obj_type.')
         return obj
 
-    def addVar(self, var_name, var_title, value, var_min, var_max, unit=''):
+    def addVar(self, var_name: str, var_title: str, value: float, var_min: float, var_max: float, unit=''):
         '''Add a variable to the workspace.
 
         Args:
@@ -128,7 +130,7 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(var)
         return
 
-    def addData(self, SAMP, filename, treename, col_name, var_name, binned=True):
+    def addData(self, SAMP, filename: str, treename: str, col_name: str, var_name: str, binned=True):
         '''Add data to the workspace.
 
         If binned, it will add a RooDataHist. Otherwise, it will add a RooDataSet.
@@ -158,7 +160,7 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(data)
         return
 
-    def defineRegions(self, SR_low, SR_high, CR_low, CR_high):
+    def defineRegions(self, SR_low: float, SR_high: float, CR_low: float, CR_high: float):
         '''Define signal and control regions for the key observable.
         TODO: make regions in workspace.
 
@@ -176,7 +178,7 @@ class RooWorkspaceCreator:
             ValueError: If lower bound >= upper bound for any of the inputs.
             ValueError: If signal region is outside the control region.
         '''
-        if not all(isinstance(arg, float) for arg in list(locals.values())):
+        if not all(isinstance(arg, float) for arg in list(locals().values())[1:]):
             raise TypeError('Input arguments must be float.')
         elif not (SR_low < SR_high):
             raise ValueError('SR_low must be smaller than SR_high.')
@@ -187,14 +189,15 @@ class RooWorkspaceCreator:
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = SR_low, SR_high, CR_low, CR_high
         return
 
-    def addPDF(self, SAMP, pdf_type, var_name, max_tries=10, strategy=1, binned=True):
+    def addPDF(self, SAMP: str, pdf_type: str, var_name: str, max_tries=10, strategy=1, binned=True):
         '''Add PDF to the workspace.
 
         The PDF type is specified. The PDF is fitted to the existing data.
 
         Args:
             SAMP (str): Name of the sample.
-            pdf_type (str):
+            pdf_type (str): PDF type, e.g. 'gaussian', 'double_gaussian', 'crytal_ball', etc.
+                See code body for exhaustive list of PDFs.
             var_name (str):
             max_tries (int, optional):
             strategy (int, optional): 
@@ -209,7 +212,7 @@ class RooWorkspaceCreator:
         match pdf_type:
             case 'gaussian':
                 mu = ROOT.RooRealVar('gaussian_mu', 'guassian_mu', self._SR_low, self._SR_high)
-                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', 10)
+                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
                 pdf = ROOT.RooGaussian('gaussian', 'gaussian', var, mu, sigma)
             case 'double_gaussian':
                 pass
@@ -256,16 +259,110 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(pdf)
         return
 
-    def configPlot(self, SAMP):
-        '''Configure plot for each given sample.
+    def configPlot(self, preset: str, SAMP: str, pdf_type='', binned=True):
+        '''Configure plot for the given data or pdf.
+
+        Args:
+            preset (str): The pre-set plot configuration to apply. The options are
+                'mc_sig', 'mc_bkg1', 'mc_bkg2', 'mc_bkg3', or 'data'.
+            SAMP (str): Name of the sample.
+            pdf_type (str, optional): PDF type. Defaults to ''.
+                Argument must be provided if preset is not 'data'.
+            binned (bool, optional): Whether the sample data is binned. Defaults to True.
+                Irrelevant if preset is not 'data'.
+        
+        Returns:
+            (None)
+        
+        Raises:
+            ValueError (str): If preset is not one of the following:
+                'mc_sig', 'mc_bkg1', 'mc_bkg2', 'mc_bkg3', or 'data'.
         '''
-        pass
+        match preset:
+            case 'mc_sig':
+                self._plot_configs['mc_sig'] = {
+                    'obj_name': pdf_type,
+                    'obj_type': 'pdf',
+                    'SAMP': SAMP,
+                    'LineColor': ROOT.kRed,
+                    'LineStyle': ROOT.kSolid,
+                    'LineWidth': 1,
+                    'MarkerColor': ROOT.kWhite,
+                    'MarkerSize': 0,
+                    'MarkerStyle': ROOT.kDot,
+                    'FillColor': ROOT.kWhite,
+                    'FillStyle': 0, # hollow
+                }
+            case 'mc_bkg1':
+                pass
+            case 'mc_bkg2':
+                pass
+            case 'mc_bkg3':
+                pass
+            case 'data':
+                self._plot_configs['data'] = {
+                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_type': 'data',
+                    'SAMP': SAMP,
+                    'LineColor': ROOT.kBlack,
+                    'LineStyle': ROOT.kSolid,
+                    'LineWidth': 1,
+                    'MarkerColor': ROOT.kBlack,
+                    'MarkerSize': 0.8,
+                    'MarkerStyle': ROOT.kFullCircle,
+                    'FillColor': ROOT.kWhite,
+                    'FillStyle': 0, # hollow
+                }
+            case _:
+                raise ValueError('Invalid option for preset.')
+        return
+    
+    def makePlot(self, var_name: str, plot_title: str, plot_width=1200, plot_height=800):
+        '''Make plot.
+
+        Args:
+            var_name (str): Name of the variable to plot.
+            plot_title (str): Plot title.
+            plot_width (int, optional): Plot width. Defaults to 600.
+            plot_height (int, optional): Plot height. Defaults to 400.
+
+        Returns:
+            (None)
+
+        Raises:
+            RuntimeError: IF the plot configurations are not specified.
+        '''
+        if not self._plot_configs:
+            raise RuntimeError('Plot configurations are not specified. Call configPlot first.')
+        var = self.__readFromWorkspace(var_name, 'var')
+        xframe = var.frame(Title=plot_title)
+        self._plot_configs = dict(sorted(self._plot_configs.items())) # data, mc_bkg, mc_sig
+        for config in self._plot_configs.values():
+            obj = self.__readFromWorkspace(config['obj_name'], config['obj_type'])
+            obj.plotOn(xframe, # TODO: make args different according to preset
+                       LineColor=config['LineColor'],
+                       LineStyle=config['LineStyle'],
+                       LineWidth=config['LineWidth'],
+                       MarkerColor=config['MarkerColor'],
+                       MarkerSize=config['MarkerSize'],
+                       MarkerStyle=config['MarkerStyle'],
+                    #    FillColor=config['FillColor'],
+                    #    FillStyle=config['FillStyle'],
+                       XErrorSize=0)
+        c = ROOT.TCanvas('c', plot_title, plot_width, plot_height)
+        xframe.Draw()
+        c.SaveAs(os.path.join(self._plotsavedir, 'roofitplot.png'))
+        return
 
 if __name__=='__main__':
     verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
     snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
     sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
     rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
-    rwc.addVar('mH', 'm_{#mu#bar{#mu}jj}', 125, 30, 200, 'GeV/c^2')
-    rwc.addData('MC_SIG', sig_data_name, 'Events', 'higgs_mass_corr', 'mH')
-    rwc.addPDF('MC_SIG', 'gaussian', 'mH')
+    rwc.addVar(var_name='mH', var_title='m_{#mu#bar{#mu}jj}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
+    rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
+    rwc.addData(SAMP='MC_SIG', filename=sig_data_name, treename='Events', col_name='higgs_mass_corr', var_name='mH')
+    rwc.addPDF(SAMP='MC_SIG', pdf_type='gaussian', var_name='mH')
+    rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
+    rwc.configPlot(preset='data', SAMP='MC_SIG')
+    rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian')
