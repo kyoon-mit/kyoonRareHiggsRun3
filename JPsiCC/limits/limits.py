@@ -130,7 +130,7 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(var)
         return
 
-    def addData(self, SAMP, filename: str, treename: str, col_name: str, var_name: str, binned=True):
+    def addData(self, SAMP, filename: str, treename: str, var_name: str, col_name: str, weight_name='', binned=True):
         '''Add data to the workspace.
 
         If binned, it will add a RooDataHist. Otherwise, it will add a RooDataSet.
@@ -140,8 +140,10 @@ class RooWorkspaceCreator:
             SAMP (str): Name of the sample.
             filename (str): Name of the file containing the data.
             treename (str): Name of the ROOT.TTree.
-            col_name (str): Name of the column of the data.
             var_name (str): Name of the variable as appears in the workspace.
+            col_name (str): Name of the column of the data.
+            weight_name (str, optional): Name of the weight variable as appears in the workspace.
+                If none specified, the data will be unweighted. Defaults to ''.
             binned (bool, optional): Whether the data is binned. Defaults to True.
         
         Returns:
@@ -151,13 +153,44 @@ class RooWorkspaceCreator:
         var = self.__readFromWorkspace(var_name, 'var')
         data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
         data_title = data_name
-        if binned:
-            data_maker = ROOT.RooDataHistHelper(data_name, data_title, ROOT.RooArgSet(var))
+        if weight_name:
+            rdf = rdf.Redefine(weight_name, f'float({weight_name})')
+            var_weight = ROOT.RooRealVar(weight_name, weight_name, -1e6, 1e6)
+            rooargset = ROOT.RooArgSet(var, var_weight)
         else:
-            data_maker = ROOT.RooDataSetHelper(data_name, data_title, ROOT.RooArgSet(var))
-        data_result = rdf.Book(ROOT.std.move(data_maker), [col_name])
-        data = data_result.GetValue()
+            rooargset = ROOT.RooArgSet(var)
+        if binned:
+            data_maker = ROOT.RooDataHistHelper(data_name, data_title, rooargset)
+        else:
+            data_maker = ROOT.RooDataSetHelper(data_name, data_title, rooargset)
+        data_result = rdf.Book(ROOT.std.move(data_maker), [col_name, weight_name])
+        data = data_result.GetValue() # TODO: needs to be fixed; want weighted dataset
         self.__importToWorkspace(data)
+        return
+    
+    def addDataHist(self, SAMP, filename: str, treename: str, var_name: str, col_name: str, nbins: int, weight_name=''):
+        '''Add datahist to workspace.
+
+        Args:
+            SAMP (str): Name of the sample.
+            filename (str): Name of the file containing the data.
+            treename (str): Name of the ROOT.TTree.
+            var_name (str): Name of the variable as appears in the workspace.
+            col_name (str): Name of the column of the data.
+            nbins (int): Number of bins.
+            weight_name (str, optional): Name of the weight variable as appears in the workspace.
+                If none specified, the data will be unweighted. Defaults to ''.
+
+        Returns:
+            (None)
+        '''
+        rdf = ROOT.RDataFrame(treename, filename)
+        var = self.__readFromWorkspace(var_name, 'var')
+        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_datahist'
+        data_title = data_name
+        histo1d = rdf.Histo1D((data_name, data_title, nbins, var.getBinning().lowBound(), var.getBinning().highBound()), col_name, weight_name)
+        datahist = ROOT.RooDataHist(ROOT.RooStringView(data_name), ROOT.RooStringView(data_title), ROOT.RooArgList(var), histo1d.GetValue())
+        self.__importToWorkspace(datahist)
         return
 
     def defineRegions(self, SR_low: float, SR_high: float, CR_low: float, CR_high: float):
@@ -218,6 +251,9 @@ class RooWorkspaceCreator:
                 pass
             case 'crystal_ball':
                 pass
+            case 'exponential':
+                exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
+                pdf = ROOT.RooExponential('exponential', 'exponential', var, exp_pow1)
             case _:
                 raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
@@ -355,14 +391,35 @@ class RooWorkspaceCreator:
         return
 
 if __name__=='__main__':
-    verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
+    # verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
+    # test
     snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
     sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
     rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
     rwc.addVar(var_name='mH', var_title='m_{#mu#bar{#mu}jj}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
     rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
-    rwc.addData(SAMP='MC_SIG', filename=sig_data_name, treename='Events', col_name='higgs_mass_corr', var_name='mH')
+    rwc.addDataHist(SAMP='MC_SIG', filename=sig_data_name, treename='Events', var_name='mH', col_name='higgs_mass_corr', nbins=200, weight_name='w')
     rwc.addPDF(SAMP='MC_SIG', pdf_type='gaussian', var_name='mH')
     rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
     rwc.configPlot(preset='data', SAMP='MC_SIG')
-    rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian')
+    rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian') # TODO: figure out first bin, bin width
+
+    # snapshot_dir = '/work/submit/mariadlf/Hrare_JPsiCC/OCT25/'
+    # fname_bkg_JpsiToMuMu = os.path.join(snapshot_dir, 'snapshotJpsiCC_10_2018.root')
+    # fname_bkg_BToJpsi = os.path.join(snapshot_dir, 'snapshotJpsiCC_11_2018.root')
+    # fname_sig_H = os.path.join(snapshot_dir, 'snapshotJpsiCC_1000_2018.root')
+    # fname_sig_Z = os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root')
+
+    # rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'ROOT_6_33_01')
+    # rwc.addVar(var_name='m_mumucc', var_title='m_{mumucc}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
+    # rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
+    # rwc.addData(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', weight_name='w')
+    # rwc.addData(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', weight_name='w')
+    # rwc.addData(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='Events', var_name='m_mumucc', col_name='massHiggsCorr', weight='w')
+    # rwc.addData(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='Events', var_name='m_mumucc', col_name='massHiggsCorr', weight='w')
+    # rwc.addPDF(SAMP='MC_SIG_H', pdf_type='gaussian', var_name='m_mumucc')
+    # rwc.addPDF(SAMP='MC_SIG_Z', pdf_type='gaussian', var_name='m_mumucc')
+    # rwc.addPDF(SAMP='MC_BKG_JpsiToMuMu', pdf_type='exponential', var_name='m_mumucc')
+    # rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
+    # rwc.configPlot(preset='data', SAMP='MC_BKG_JpsiToMuMu')
+    # rwc.makePlot(var_name='m_mumucc', plot_title='H->JpsiCC')
