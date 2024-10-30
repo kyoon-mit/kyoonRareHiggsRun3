@@ -18,33 +18,24 @@ class RooWorkspaceCreator:
     To create a RooWorkspace for a given sample.
 
     Args:
-        # SAMP (str): Either one of the following options.
-        #     'DATA_BKG', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
         CMSSW (str): Version of the CMSSW.
         weights (bool): Whether weights were used.
+        suffix (str, optional): Suffix of the workspace file name.
 
     Raises:
-        # ValueError: If the string provided for SAMP is not among the options.
         TypeError: If the value provided for YEAR is not an integer.
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
+        TypeError: If the value provided for suffix is not a string.
     '''
-    def __init__(self, YEAR: int, VERS: str, CAT: str, CMSSW: str, weights=True):
-        # match SAMP:
-        #     case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
-        #     case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
-        #     case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
-        #     case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
-        #     case 'MC_BKG3': self._DATA, self._MODE = False, 'BKG'
-        #     case 'MC_BKG4': self._DATA, self._MODE = False, 'BKG'
-        #     case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
-        #     case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
-        if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
-        if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
-        if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
+    def __init__(self, YEAR: int, VERS: str, CAT: str, CMSSW: str, weights=True, suffix=''):
+        if not isinstance(YEAR, int): raise TypeError(f'YEAR must be an integer.')
+        if not isinstance(VERS, str): raise TypeError(f'VERS must be a string.')
+        if not isinstance(CAT, str): raise TypeError(f'CAT must be a string.')
+        if not isinstance(suffix, str): raise TypeError(f'The value for suffix must be a string.')
         self.YEAR, self.VERSION, self.CAT, self.CMSSW = YEAR, VERS, CAT, CMSSW
         self._weights = weights # bool
 
@@ -56,7 +47,7 @@ class RooWorkspaceCreator:
         self._plot_configs = {}
         self._sfx = f'{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         self._wname = f'w' # Name of the ROOT workspace
-        self._wfilename = f'workspace_{self._sfx}.root' # Name of the ROOT workspace file
+        self._wfilename = f'workspace_{self._sfx}{"_" if suffix else ""}{suffix}.root' # Name of the ROOT workspace file
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = 120, 130, 110, 140 # default values
         w = ROOT.RooWorkspace(self._wname)
         w.writeToFile(self._wfilename)
@@ -114,8 +105,8 @@ class RooWorkspaceCreator:
             var_name (str): Variable name.
             var_title (str): Variable title.
             value (float): Nominal value.
-            var_min (float): Lower bound.
-            var_max (float): Upper bound.
+            var_min (int or float): Lower bound.
+            var_max (int or float): Upper bound.
             unit (str, optional): Unit.
 
         Returns:
@@ -130,10 +121,9 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(var)
         return
 
-    def addData(self, SAMP, filename: str, treename: str, var_name: str, col_name: str, weight_name='', binned=True):
-        '''Add data to the workspace.
+    def addDataSet(self, SAMP, filename: str, treename: str, var_name: str, col_name: str, weight_name=''):
+        '''Add dataset to the workspace.
 
-        If binned, it will add a RooDataHist. Otherwise, it will add a RooDataSet.
         For reference, see https://root.cern/doc/v632/rf408__RDataFrameToRooFit_8py_source.html.
 
         Args:
@@ -144,7 +134,6 @@ class RooWorkspaceCreator:
             col_name (str): Name of the column of the data.
             weight_name (str, optional): Name of the weight variable as appears in the workspace.
                 If none specified, the data will be unweighted. Defaults to ''.
-            binned (bool, optional): Whether the data is binned. Defaults to True.
         
         Returns:
             (None)
@@ -157,14 +146,15 @@ class RooWorkspaceCreator:
             rdf = rdf.Redefine(weight_name, f'float({weight_name})')
             var_weight = ROOT.RooRealVar(weight_name, weight_name, -1e6, 1e6)
             rooargset = ROOT.RooArgSet(var, var_weight)
+            cols = [col_name, weight_name]
         else:
             rooargset = ROOT.RooArgSet(var)
-        if binned:
-            data_maker = ROOT.RooDataHistHelper(data_name, data_title, rooargset)
-        else:
-            data_maker = ROOT.RooDataSetHelper(data_name, data_title, rooargset)
-        data_result = rdf.Book(ROOT.std.move(data_maker), [col_name, weight_name])
-        data = data_result.GetValue() # TODO: needs to be fixed; want weighted dataset
+            cols = [col_name]
+        dataset_maker = ROOT.RooDataSetHelper(data_name, data_title, rooargset)
+        dataset_result = rdf.Book(ROOT.std.move(dataset_maker), cols)
+        data = dataset_result.GetValue() # TODO: needs to be fixed; want weighted dataset
+        if weight_name:
+            data = ROOT.RooDataSet(data, weight_name)
         self.__importToWorkspace(data)
         return
     
@@ -198,20 +188,20 @@ class RooWorkspaceCreator:
         TODO: make regions in workspace.
 
         Args:
-            SR_low (float): Lower bound of the signal region.
-            SR_high (float): Upper bound of the signal region.
-            CR_low (float): Lower bound of the control region.
-            CR_high (float): Upper bound of the control region.
+            SR_low (int or float): Lower bound of the signal region.
+            SR_high (int or float): Upper bound of the signal region.
+            CR_low (int or float): Lower bound of the control region.
+            CR_high (int or float): Upper bound of the control region.
         
         Returns:
             (None)
 
         Raises:
-            TypeError: If input arguments are not float.
+            TypeError: If input arguments are not int or float.
             ValueError: If lower bound >= upper bound for any of the inputs.
             ValueError: If signal region is outside the control region.
         '''
-        if not all(isinstance(arg, float) for arg in list(locals().values())[1:]):
+        if not all(isinstance(arg, (int, float)) for arg in list(locals().values())[1:]):
             raise TypeError('Input arguments must be float.')
         elif not (SR_low < SR_high):
             raise ValueError('SR_low must be smaller than SR_high.')
@@ -244,8 +234,8 @@ class RooWorkspaceCreator:
         var = self.__readFromWorkspace(var_name, 'var')
         match pdf_type:
             case 'gaussian':
-                mu = ROOT.RooRealVar('gaussian_mu', 'guassian_mu', self._SR_low, self._SR_high)
-                sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+                mu = ROOT.RooRealVar('gauss_mu', 'guass_mu', self._SR_low, self._SR_high)
+                sigma = ROOT.RooRealVar('gauss_sigma', 'guass_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
                 pdf = ROOT.RooGaussian(f'{SAMP}_gaussian', f'{SAMP}_gaussian', var, mu, sigma)
             case 'double_gaussian':
                 pass
@@ -254,6 +244,13 @@ class RooWorkspaceCreator:
             case 'exponential':
                 exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
                 pdf = ROOT.RooExponential(f'{SAMP}_exponential', f'{SAMP}_exponential', var, exp_pow1)
+            case 'gaussian_X_exponential': # convolution
+                mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+                sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+                gauss_pdf = ROOT.RooGaussian(f'{SAMP}_gaussianX', f'{SAMP}_gaussianX', var, mu, sigma)
+                exp_pow1 = ROOT.RooRealVar('expX_pow1', 'expX_pow1', -0.1, -10., 0.)
+                exp_pdf = ROOT.RooExponential(f'{SAMP}_expX', f'{SAMP}_expX', var, exp_pow1)
+                pdf = ROOT.RooFFTConvPdf(f'{SAMP}_gaussian_X_exponential', f'{SAMP}_gaussian_X_exponential', var, exp_pdf, gauss_pdf)
             case _:
                 raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
@@ -325,7 +322,7 @@ class RooWorkspaceCreator:
                     'SAMP': SAMP,
                     'LineColor': ROOT.kRed,
                     'LineStyle': ROOT.kSolid,
-                    'LineWidth': 1,
+                    'LineWidth': 2,
                     'MarkerColor': ROOT.kWhite,
                     'MarkerSize': 0,
                     'MarkerStyle': ROOT.kDot,
@@ -341,7 +338,7 @@ class RooWorkspaceCreator:
                     'SAMP': SAMP,
                     'LineColor': ROOT.kBlue,
                     'LineStyle': ROOT.kSolid,
-                    'LineWidth': 1,
+                    'LineWidth': 2,
                     'MarkerColor': ROOT.kWhite,
                     'MarkerSize': 0,
                     'MarkerStyle': ROOT.kDot,
@@ -414,13 +411,15 @@ class RooWorkspaceCreator:
         self._plot_configs = {}
         return
     
-    def makePlot(self, var_name: str, plot_name: str, plot_title: str, plot_width=1200, plot_height=800):
+    def makePlot(self, var_name: str, plot_name: str, plot_title: str, show_SR=True, plot_width=1200, plot_height=800):
         '''Make plot.
 
         Args:
             var_name (str): Name of the variable to plot.
             plot_name (str): Plot name to use for the saved plot.
             plot_title (str): Plot title to display
+            show_SR (bool, optional): Display SR as vertical lines on the plot.
+                Defaults to True.
             plot_width (int, optional): Plot width. Defaults to 600.
             plot_height (int, optional): Plot height. Defaults to 400.
 
@@ -467,60 +466,14 @@ class RooWorkspaceCreator:
                     legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'EP')
                 case _:
                     pass
+        if show_SR:
+            line_SR_low = ROOT.TLine(self._SR_low, xframe.GetMinimum(), self._SR_low, xframe.GetMaximum())
+            line_SR_high = ROOT.TLine(self._SR_high, xframe.GetMinimum(), self._SR_high, xframe.GetMaximum())
+            line_SR_low.SetLineWidth(1)
+            line_SR_low.SetLineStyle(ROOT.kDashed)
+            line_SR_high.SetLineWidth(1)
+            line_SR_high.SetLineStyle(ROOT.kDashed)
         xframe.Draw()
         legend.Draw()
         c.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}.png'))
         return
-
-if __name__=='__main__':
-    # verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
-    # test
-    # snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
-    # sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
-    # rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
-    # rwc.addVar(var_name='mH', var_title='m_{#mu#bar{#mu}jj}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
-    # rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
-    # rwc.addDataHist(SAMP='MC_SIG', filename=sig_data_name, treename='Events', var_name='mH', col_name='higgs_mass_corr', nbins=200, weight_name='w')
-    # rwc.addPDF(SAMP='MC_SIG', pdf_type='gaussian', var_name='mH')
-    # rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
-    # rwc.configPlot(preset='data', SAMP='MC_SIG')
-    # rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian')
-
-    snapshot_dir = '/work/submit/mariadlf/Hrare_JPsiCC/OCT25/'
-    fname_bkg_JpsiToMuMu = os.path.join(snapshot_dir, 'snapshotJpsiCC_10_2018.root')
-    fname_bkg_BToJpsi = os.path.join(snapshot_dir, 'snapshotJpsiCC_11_2018.root')
-    fname_sig_H = os.path.join(snapshot_dir, 'snapshotJpsiCC_1000_2018.root')
-    fname_sig_Z = os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root')
-
-    var_min, var_max = 90., 200.
-    nbins = int(var_max-var_min)
-    rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'ROOT_6_33_01')
-    rwc.addVar(var_name='m_mumucc', var_title='m_{#mu^{+}#mu^{-}c#bar{c}}', value=125, var_min=var_min, var_max=var_max, unit='GeV/c^{2}')
-    rwc.defineRegions(SR_low=110., SR_high=130., CR_low=60., CR_high=200.)
-    rwc.addDataHist(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
-    rwc.addDataHist(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
-    rwc.addDataHist(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
-    rwc.addDataHist(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
-    rwc.addPDF(SAMP='MC_SIG_H', pdf_type='gaussian', var_name='m_mumucc')
-    rwc.addPDF(SAMP='MC_SIG_Z', pdf_type='gaussian', var_name='m_mumucc')
-    rwc.addPDF(SAMP='MC_BKG_JpsiToMuMu', pdf_type='exponential', var_name='m_mumucc')
-    rwc.addPDF(SAMP='MC_BKG_BToJpsi', pdf_type='exponential', var_name='m_mumucc')
-
-    rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='bkg_pdf', pdf_type='exponential')
-    rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='data')
-    rwc.makePlot(var_name='m_mumucc', plot_name='MC_BKG_JpsiToMuMu__exponential__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
-
-    rwc.clearConfigPlot()
-    rwc.configPlot(SAMP='MC_BKG_BToJpsi', preset='bkg_pdf', pdf_type='exponential')
-    rwc.configPlot(SAMP='MC_BKG_BToJpsi', preset='data')
-    rwc.makePlot(var_name='m_mumucc', plot_name='MC_BKG_BToJpsi__exponential__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
-
-    rwc.clearConfigPlot()
-    rwc.configPlot(SAMP='MC_SIG_H', preset='sig_pdf', pdf_type='gaussian')
-    rwc.configPlot(SAMP='MC_SIG_H', preset='data')
-    rwc.makePlot(var_name='m_mumucc', plot_name='MC_SIG_H__gaussian__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
-
-    rwc.clearConfigPlot()
-    rwc.configPlot(SAMP='MC_SIG_Z', preset='sig_pdf', pdf_type='gaussian')
-    rwc.configPlot(SAMP='MC_SIG_Z', preset='data')
-    rwc.makePlot(var_name='m_mumucc', plot_name='MC_SIG_Z__gaussian__mZ_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')

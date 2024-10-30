@@ -1,6 +1,6 @@
 import setuptools
 setuptools.setup(name='kytools',
-version='1.0.1',
+version='1.1.0',
 description='K.Yoon\'s analysis tools',
 url='#',
 author='Kyungseop Yoon',
