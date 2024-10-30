@@ -246,14 +246,14 @@ class RooWorkspaceCreator:
             case 'gaussian':
                 mu = ROOT.RooRealVar('gaussian_mu', 'guassian_mu', self._SR_low, self._SR_high)
                 sigma = ROOT.RooRealVar('gaussian_sigma', 'guassian_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
-                pdf = ROOT.RooGaussian('gaussian', 'gaussian', var, mu, sigma)
+                pdf = ROOT.RooGaussian(f'{SAMP}_gaussian', f'{SAMP}_gaussian', var, mu, sigma)
             case 'double_gaussian':
                 pass
             case 'crystal_ball':
                 pass
             case 'exponential':
                 exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
-                pdf = ROOT.RooExponential('exponential', 'exponential', var, exp_pow1)
+                pdf = ROOT.RooExponential(f'{SAMP}_exponential', f'{SAMP}_exponential', var, exp_pow1)
             case _:
                 raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
@@ -319,7 +319,8 @@ class RooWorkspaceCreator:
             case 'sig_pdf':
                 self._plot_configs['sig_pdf'] = {
                     'draw_type': 'line',
-                    'obj_name': pdf_type,
+                    'obj_name': f'{SAMP}_{pdf_type}',
+                    'obj_title': pdf_type,
                     'obj_type': 'pdf',
                     'SAMP': SAMP,
                     'LineColor': ROOT.kRed,
@@ -334,7 +335,8 @@ class RooWorkspaceCreator:
             case 'bkg_pdf':
                 self._plot_configs['sig_pdf'] = {
                     'draw_type': 'line',
-                    'obj_name': pdf_type,
+                    'obj_name': f'{SAMP}_{pdf_type}',
+                    'obj_title': pdf_type,
                     'obj_type': 'pdf',
                     'SAMP': SAMP,
                     'LineColor': ROOT.kBlue,
@@ -350,6 +352,7 @@ class RooWorkspaceCreator:
                 self._plot_configs['mc_bkg1'] = {
                     'draw_type': 'solid',
                     'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
                     'obj_type': 'data',
                     'SAMP': SAMP,
                     'LineColor': ROOT.kBlack,
@@ -365,6 +368,7 @@ class RooWorkspaceCreator:
                 self._plot_configs['mc_bkg1'] = {
                     'draw_type': 'solid',
                     'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
                     'obj_type': 'data',
                     'SAMP': SAMP,
                     'LineColor': ROOT.kBlack,
@@ -382,6 +386,7 @@ class RooWorkspaceCreator:
                 self._plot_configs['data'] = {
                     'draw_type': 'marker',
                     'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
                     'obj_type': 'data',
                     'SAMP': SAMP,
                     'LineColor': ROOT.kBlack,
@@ -397,12 +402,25 @@ class RooWorkspaceCreator:
                 raise ValueError('Invalid option for preset.')
         return
     
-    def makePlot(self, var_name: str, plot_title: str, plot_width=1200, plot_height=800):
+    def clearConfigPlot(self):
+        '''Clear the plot configs.
+
+        Args:
+            (None)
+
+        Returns:
+            (None)
+        '''
+        self._plot_configs = {}
+        return
+    
+    def makePlot(self, var_name: str, plot_name: str, plot_title: str, plot_width=1200, plot_height=800):
         '''Make plot.
 
         Args:
             var_name (str): Name of the variable to plot.
-            plot_title (str): Plot title.
+            plot_name (str): Plot name to use for the saved plot.
+            plot_title (str): Plot title to display
             plot_width (int, optional): Plot width. Defaults to 600.
             plot_height (int, optional): Plot height. Defaults to 400.
 
@@ -430,7 +448,7 @@ class RooWorkspaceCreator:
                                LineStyle=config['LineStyle'],
                                LineWidth=config['LineWidth'],
                                DrawOption='L')
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'], 'LC')
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'LC')
                 case 'solid':
                     obj.plotOn(xframe,
                                Name=config['obj_name'],
@@ -439,19 +457,19 @@ class RooWorkspaceCreator:
                                LineWidth=config['LineWidth'],
                                MarkerSize=config['MarkerSize'],
                                DrawOption='B')
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'].rstrip('_datahist').rstrip('_dataset'), 'F')
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'F')
                 case 'marker':
                     obj.plotOn(xframe,
                                Name=config['obj_name'],
                                MarkerColor=config['MarkerColor'],
                                MarkerSize=config['MarkerSize'],
                                MarkerStyle=config['MarkerStyle'])
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'].rstrip('_datahist').rstrip('_dataset'), 'EP')
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'EP')
                 case _:
                     pass
         xframe.Draw()
         legend.Draw()
-        c.SaveAs(os.path.join(self._plotsavedir, f'{var_name}_roofitplot.png'))
+        c.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}.png'))
         return
 
 if __name__=='__main__':
@@ -474,16 +492,35 @@ if __name__=='__main__':
     fname_sig_H = os.path.join(snapshot_dir, 'snapshotJpsiCC_1000_2018.root')
     fname_sig_Z = os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root')
 
+    var_min, var_max = 90., 200.
+    nbins = int(var_max-var_min)
     rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'ROOT_6_33_01')
-    rwc.addVar(var_name='m_mumucc', var_title='m_{mumucc}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
-    rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
-    rwc.addDataHist(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
-    rwc.addDataHist(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
-    rwc.addDataHist(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
-    rwc.addDataHist(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
+    rwc.addVar(var_name='m_mumucc', var_title='m_{#mu^{+}#mu^{-}c#bar{c}}', value=125, var_min=var_min, var_max=var_max, unit='GeV/c^{2}')
+    rwc.defineRegions(SR_low=110., SR_high=130., CR_low=60., CR_high=200.)
+    rwc.addDataHist(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
+    rwc.addDataHist(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
+    rwc.addDataHist(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
+    rwc.addDataHist(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=nbins, weight_name='w')
     rwc.addPDF(SAMP='MC_SIG_H', pdf_type='gaussian', var_name='m_mumucc')
     rwc.addPDF(SAMP='MC_SIG_Z', pdf_type='gaussian', var_name='m_mumucc')
     rwc.addPDF(SAMP='MC_BKG_JpsiToMuMu', pdf_type='exponential', var_name='m_mumucc')
+    rwc.addPDF(SAMP='MC_BKG_BToJpsi', pdf_type='exponential', var_name='m_mumucc')
+
     rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='bkg_pdf', pdf_type='exponential')
     rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='data')
-    rwc.makePlot(var_name='m_mumucc', plot_title='H->JpsiCC')
+    rwc.makePlot(var_name='m_mumucc', plot_name='MC_BKG_JpsiToMuMu__exponential__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
+
+    rwc.clearConfigPlot()
+    rwc.configPlot(SAMP='MC_BKG_BToJpsi', preset='bkg_pdf', pdf_type='exponential')
+    rwc.configPlot(SAMP='MC_BKG_BToJpsi', preset='data')
+    rwc.makePlot(var_name='m_mumucc', plot_name='MC_BKG_BToJpsi__exponential__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
+
+    rwc.clearConfigPlot()
+    rwc.configPlot(SAMP='MC_SIG_H', preset='sig_pdf', pdf_type='gaussian')
+    rwc.configPlot(SAMP='MC_SIG_H', preset='data')
+    rwc.makePlot(var_name='m_mumucc', plot_name='MC_SIG_H__gaussian__mH_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
+
+    rwc.clearConfigPlot()
+    rwc.configPlot(SAMP='MC_SIG_Z', preset='sig_pdf', pdf_type='gaussian')
+    rwc.configPlot(SAMP='MC_SIG_Z', preset='data')
+    rwc.makePlot(var_name='m_mumucc', plot_name='MC_SIG_Z__gaussian__mZ_90_200', plot_title='H#rightarrow J/#psi + c#bar{c}')
