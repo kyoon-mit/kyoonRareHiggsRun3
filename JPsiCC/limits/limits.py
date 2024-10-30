@@ -269,7 +269,8 @@ class RooWorkspaceCreator:
                                    ROOT.RooFit.Strategy(strategy),
                                    ROOT.RooFit.PrintLevel(-1),
                                    ROOT.RooFit.Warnings(False),
-                                   ROOT.RooFit.PrintEvalErrors(-1))
+                                   ROOT.RooFit.PrintEvalErrors(-1),
+                                   ROOT.RooFit.SumW2Error(True))
             status = fit_result.status()
             if (status != 0):                                                                                                                              
                 params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
@@ -295,15 +296,15 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(pdf)
         return
 
-    def configPlot(self, preset: str, SAMP: str, pdf_type='', binned=True):
+    def configPlot(self, SAMP: str, preset: str, pdf_type='', binned=True):
         '''Configure plot for the given data or pdf.
 
         Args:
+            SAMP (str): Name of the sample.
             preset (str): The pre-set plot configuration to apply. The options are
                 'mc_sig', 'mc_bkg1', 'mc_bkg2', 'mc_bkg3', or 'data'.
-            SAMP (str): Name of the sample.
             pdf_type (str, optional): PDF type. Defaults to ''.
-                Argument must be provided if preset is not 'data'.
+                Argument must be provided if preset is pdf.
             binned (bool, optional): Whether the sample data is binned. Defaults to True.
                 Irrelevant if preset is not 'data'.
         
@@ -315,8 +316,9 @@ class RooWorkspaceCreator:
                 'mc_sig', 'mc_bkg1', 'mc_bkg2', 'mc_bkg3', or 'data'.
         '''
         match preset:
-            case 'mc_sig':
-                self._plot_configs['mc_sig'] = {
+            case 'sig_pdf':
+                self._plot_configs['sig_pdf'] = {
+                    'draw_type': 'line',
                     'obj_name': pdf_type,
                     'obj_type': 'pdf',
                     'SAMP': SAMP,
@@ -329,14 +331,56 @@ class RooWorkspaceCreator:
                     'FillColor': ROOT.kWhite,
                     'FillStyle': 0, # hollow
                 }
+            case 'bkg_pdf':
+                self._plot_configs['sig_pdf'] = {
+                    'draw_type': 'line',
+                    'obj_name': pdf_type,
+                    'obj_type': 'pdf',
+                    'SAMP': SAMP,
+                    'LineColor': ROOT.kBlue,
+                    'LineStyle': ROOT.kSolid,
+                    'LineWidth': 1,
+                    'MarkerColor': ROOT.kWhite,
+                    'MarkerSize': 0,
+                    'MarkerStyle': ROOT.kDot,
+                    'FillColor': ROOT.kWhite,
+                    'FillStyle': 0, # hollow
+                }
             case 'mc_bkg1':
-                pass
+                self._plot_configs['mc_bkg1'] = {
+                    'draw_type': 'solid',
+                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_type': 'data',
+                    'SAMP': SAMP,
+                    'LineColor': ROOT.kBlack,
+                    'LineStyle': ROOT.kSolid,
+                    'LineWidth': 0,
+                    'MarkerColor': ROOT.kWhite,
+                    'MarkerSize': 0,
+                    'MarkerStyle': ROOT.kDot,
+                    'FillColor': ROOT.kRed - 4,
+                    'FillStyle': 1001 # solid
+                }
             case 'mc_bkg2':
-                pass
+                self._plot_configs['mc_bkg1'] = {
+                    'draw_type': 'solid',
+                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                    'obj_type': 'data',
+                    'SAMP': SAMP,
+                    'LineColor': ROOT.kBlack,
+                    'LineStyle': ROOT.kSolid,
+                    'LineWidth': 0,
+                    'MarkerColor': ROOT.kWhite,
+                    'MarkerSize': 0,
+                    'MarkerStyle': ROOT.kDot,
+                    'FillColor': ROOT.kOrange + 1,
+                    'FillStyle': 1001
+                }
             case 'mc_bkg3':
                 pass
             case 'data':
                 self._plot_configs['data'] = {
+                    'draw_type': 'marker',
                     'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
                     'obj_type': 'data',
                     'SAMP': SAMP,
@@ -373,53 +417,73 @@ class RooWorkspaceCreator:
         var = self.__readFromWorkspace(var_name, 'var')
         xframe = var.frame(Title=plot_title)
         self._plot_configs = dict(sorted(self._plot_configs.items())) # data, mc_bkg, mc_sig
+        c = ROOT.TCanvas('c', plot_title, plot_width, plot_height) # Need to create canvas before legend
+        legend = ROOT.TLegend(0.64, 0.84, 0.97, 0.95)
+        legend.SetTextSize(.024)
         for config in self._plot_configs.values():
             obj = self.__readFromWorkspace(config['obj_name'], config['obj_type'])
-            obj.plotOn(xframe, # TODO: make args different according to preset
-                       LineColor=config['LineColor'],
-                       LineStyle=config['LineStyle'],
-                       LineWidth=config['LineWidth'],
-                       MarkerColor=config['MarkerColor'],
-                       MarkerSize=config['MarkerSize'],
-                       MarkerStyle=config['MarkerStyle'],
-                    #    FillColor=config['FillColor'],
-                    #    FillStyle=config['FillStyle'],
-                       XErrorSize=0)
-        c = ROOT.TCanvas('c', plot_title, plot_width, plot_height)
+            match config['draw_type']:
+                case 'line':
+                    obj.plotOn(xframe,
+                               Name=config['obj_name'],
+                               LineColor=config['LineColor'],
+                               LineStyle=config['LineStyle'],
+                               LineWidth=config['LineWidth'],
+                               DrawOption='L')
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'], 'LC')
+                case 'solid':
+                    obj.plotOn(xframe,
+                               Name=config['obj_name'],
+                               FillColor=config['FillColor'],
+                               FillStyle=config['FillStyle'],
+                               LineWidth=config['LineWidth'],
+                               MarkerSize=config['MarkerSize'],
+                               DrawOption='B')
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'].rstrip('_datahist').rstrip('_dataset'), 'F')
+                case 'marker':
+                    obj.plotOn(xframe,
+                               Name=config['obj_name'],
+                               MarkerColor=config['MarkerColor'],
+                               MarkerSize=config['MarkerSize'],
+                               MarkerStyle=config['MarkerStyle'])
+                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_name'].rstrip('_datahist').rstrip('_dataset'), 'EP')
+                case _:
+                    pass
         xframe.Draw()
-        c.SaveAs(os.path.join(self._plotsavedir, 'roofitplot.png'))
+        legend.Draw()
+        c.SaveAs(os.path.join(self._plotsavedir, f'{var_name}_roofitplot.png'))
         return
 
 if __name__=='__main__':
     # verbosity = ROOT.Experimental.RLogScopedVerbosity(ROOT.Detail.RDF.RDFLogChannel(), ROOT.Experimental.ELogLevel.kInfo)
     # test
-    snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
-    sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
-    rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
-    rwc.addVar(var_name='mH', var_title='m_{#mu#bar{#mu}jj}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
-    rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
-    rwc.addDataHist(SAMP='MC_SIG', filename=sig_data_name, treename='Events', var_name='mH', col_name='higgs_mass_corr', nbins=200, weight_name='w')
-    rwc.addPDF(SAMP='MC_SIG', pdf_type='gaussian', var_name='mH')
-    rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
-    rwc.configPlot(preset='data', SAMP='MC_SIG')
-    rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian') # TODO: figure out first bin, bin width
-
-    # snapshot_dir = '/work/submit/mariadlf/Hrare_JPsiCC/OCT25/'
-    # fname_bkg_JpsiToMuMu = os.path.join(snapshot_dir, 'snapshotJpsiCC_10_2018.root')
-    # fname_bkg_BToJpsi = os.path.join(snapshot_dir, 'snapshotJpsiCC_11_2018.root')
-    # fname_sig_H = os.path.join(snapshot_dir, 'snapshotJpsiCC_1000_2018.root')
-    # fname_sig_Z = os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root')
-
-    # rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'ROOT_6_33_01')
-    # rwc.addVar(var_name='m_mumucc', var_title='m_{mumucc}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
+    # snapshot_dir = '/work/submit/kyoon/CMSSW_13_3_0/src/RareHiggsRun3/JPsiCC/analysis'
+    # sig_data_name = os.path.join(snapshot_dir, 'snapshot_MC_SIG_2018_GF_v202407_20241024_WEIGHT_no_filter.root')
+    # rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'CMSSW_13_3_0')
+    # rwc.addVar(var_name='mH', var_title='m_{#mu#bar{#mu}jj}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
     # rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
-    # rwc.addData(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', weight_name='w')
-    # rwc.addData(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', weight_name='w')
-    # rwc.addData(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='Events', var_name='m_mumucc', col_name='massHiggsCorr', weight='w')
-    # rwc.addData(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='Events', var_name='m_mumucc', col_name='massHiggsCorr', weight='w')
-    # rwc.addPDF(SAMP='MC_SIG_H', pdf_type='gaussian', var_name='m_mumucc')
-    # rwc.addPDF(SAMP='MC_SIG_Z', pdf_type='gaussian', var_name='m_mumucc')
-    # rwc.addPDF(SAMP='MC_BKG_JpsiToMuMu', pdf_type='exponential', var_name='m_mumucc')
+    # rwc.addDataHist(SAMP='MC_SIG', filename=sig_data_name, treename='Events', var_name='mH', col_name='higgs_mass_corr', nbins=200, weight_name='w')
+    # rwc.addPDF(SAMP='MC_SIG', pdf_type='gaussian', var_name='mH')
     # rwc.configPlot(preset='mc_sig', SAMP='MC_SIG', pdf_type='gaussian')
-    # rwc.configPlot(preset='data', SAMP='MC_BKG_JpsiToMuMu')
-    # rwc.makePlot(var_name='m_mumucc', plot_title='H->JpsiCC')
+    # rwc.configPlot(preset='data', SAMP='MC_SIG')
+    # rwc.makePlot(var_name='mH', plot_title='mc sig + gaussian')
+
+    snapshot_dir = '/work/submit/mariadlf/Hrare_JPsiCC/OCT25/'
+    fname_bkg_JpsiToMuMu = os.path.join(snapshot_dir, 'snapshotJpsiCC_10_2018.root')
+    fname_bkg_BToJpsi = os.path.join(snapshot_dir, 'snapshotJpsiCC_11_2018.root')
+    fname_sig_H = os.path.join(snapshot_dir, 'snapshotJpsiCC_1000_2018.root')
+    fname_sig_Z = os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root')
+
+    rwc = RooWorkspaceCreator(2018, '202407', 'GF', 'ROOT_6_33_01')
+    rwc.addVar(var_name='m_mumucc', var_title='m_{mumucc}', value=125, var_min=0., var_max=200., unit='GeV/c^2')
+    rwc.defineRegions(SR_low=80., SR_high=140., CR_low=0., CR_high=200.)
+    rwc.addDataHist(SAMP='MC_SIG_H', filename=fname_sig_H, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
+    rwc.addDataHist(SAMP='MC_SIG_Z', filename=fname_sig_Z, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
+    rwc.addDataHist(SAMP='MC_BKG_JpsiToMuMu', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
+    rwc.addDataHist(SAMP='MC_BKG_BToJpsi', filename=fname_bkg_JpsiToMuMu, treename='events', var_name='m_mumucc', col_name='massHiggsCorr', nbins=200, weight_name='w')
+    rwc.addPDF(SAMP='MC_SIG_H', pdf_type='gaussian', var_name='m_mumucc')
+    rwc.addPDF(SAMP='MC_SIG_Z', pdf_type='gaussian', var_name='m_mumucc')
+    rwc.addPDF(SAMP='MC_BKG_JpsiToMuMu', pdf_type='exponential', var_name='m_mumucc')
+    rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='bkg_pdf', pdf_type='exponential')
+    rwc.configPlot(SAMP='MC_BKG_JpsiToMuMu', preset='data')
+    rwc.makePlot(var_name='m_mumucc', plot_title='H->JpsiCC')
