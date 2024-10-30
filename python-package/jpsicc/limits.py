@@ -207,8 +207,8 @@ class RooWorkspaceCreator:
             raise ValueError('SR_low must be smaller than SR_high.')
         elif not (CR_low < CR_high):
             raise ValueError('CR_low must be smaller than CR_high.')
-        elif not (CR_low < SR_low and SR_high < CR_high):
-            raise ValueError('Signal region must lie outside the control region.')
+        elif not (CR_low <= SR_low and SR_high <= CR_high):
+            raise ValueError('Signal region must lie outside or on the boundary of control region.')
         self._SR_low, self._SR_high, self._CR_low, self._CR_high = SR_low, SR_high, CR_low, CR_high
         return
 
@@ -466,6 +466,7 @@ class RooWorkspaceCreator:
                     legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'EP')
                 case _:
                     pass
+        xframe.Draw()
         if show_SR:
             line_SR_low = ROOT.TLine(self._SR_low, xframe.GetMinimum(), self._SR_low, xframe.GetMaximum())
             line_SR_high = ROOT.TLine(self._SR_high, xframe.GetMinimum(), self._SR_high, xframe.GetMaximum())
@@ -473,7 +474,8 @@ class RooWorkspaceCreator:
             line_SR_low.SetLineStyle(ROOT.kDashed)
             line_SR_high.SetLineWidth(1)
             line_SR_high.SetLineStyle(ROOT.kDashed)
-        xframe.Draw()
+            line_SR_low.Draw()
+            line_SR_high.Draw()
         legend.Draw()
         c.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}.png'))
         return
