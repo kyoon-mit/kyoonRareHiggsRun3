@@ -111,7 +111,7 @@ Vec_f getMinimum(Vec_f v1, Vec_f v2){
 	Vec_f output = {};
 	if (!v1.empty() && !v2.empty() && v1.size() == v2.size()){
 		for (unsigned int i = 0; i < v1.size(); i++){
-			output.push_back(min(v1[i], v2[i]));
+			output.push_back(std::min(v1[i], v2[i]));
 		}
 	}
 	return output;
@@ -121,7 +121,7 @@ Vec_f getMaximum(Vec_f v1, Vec_f v2){
 	Vec_f output = {};
 	if (!v1.empty() && !v2.empty() && v1.size() == v2.size()){
 		for (unsigned int i = 0; i < v1.size(); i++){
-			output.push_back(max(v1[i], v2[i]));
+			output.push_back(std::max(v1[i], v2[i]));
 		}
 	}
 	return output;
@@ -332,8 +332,8 @@ stdVec_i HiggsCandFromRECO(const Vec_f& meson_pt, const Vec_f& meson_eta, const 
 			   const Vec_f& wrong_meson_pt, const Vec_f& wrong_meson2_pt,
 			   const Vec_f& ph_pt, const Vec_f& ph_eta, const Vec_f& ph_phi) {
 
-  float Minv = -1;
-  float ptHiggs = -1;
+  // float Minv = -1;
+  // float ptHiggs = -1;
   float ptCandMax=0;
   PtEtaPhiMVector p_ph(ph_pt[0], ph_eta[0], ph_phi[0], 0);
   unsigned int indexPhoton = 0;
@@ -373,8 +373,8 @@ stdVec_i HiggsCandFromRECO(const Vec_f& meson_pt, const Vec_f& meson_eta, const 
     ptCandMax=ptCand;
     if(ptCandMax < ptWrongMax) continue; // we want the leading meson to the of the right flavor
     if(ptCandMax < ptWrong2Max) continue; // we want the leading meson to the of the right flavor
-    Minv = (p_meson + p_ph).M();
-    ptHiggs = (p_meson + p_ph).pt();
+    // Minv = (p_meson + p_ph).M();
+    // ptHiggs = (p_meson + p_ph).pt();
     idx[0] = i;
     idx[1] = indexPhoton;
   }
@@ -406,7 +406,7 @@ Vec_i mesonCand(const Vec_f& pt, const Vec_f& eta, const Vec_f& phi, const Vec_f
   float phiLeadingPhoton = ph_phi[0];
   if(ph_pt[1] > ph_pt[0]) phiLeadingPhoton = ph_phi[1];
 
-  float mass=-100;
+  // float mass=-100;
   float ptCandMax=0;
   for (unsigned int i=0; i<pt.size(); i++) {
 
@@ -594,7 +594,7 @@ float compute_HiggsVars_var_VtxCorr(const float mes_pt, const float mes_eta, con
   PtEtaPhiMVector p4_ph_vtx_M(p4_ph_vtx.Pt(), p4_ph_vtx.Eta(), p4_ph_vtx.Phi(), 0);
 
   PtEtaPhiMVector p_mes(mes_pt, mes_eta, mes_phi, mes_mass);
-  PtEtaPhiMVector p_Hig_ORG = (p4_ph + p_mes);
+  // PtEtaPhiMVector p_Hig_ORG = (p4_ph + p_mes);
 
   //  cout << "--------------------------------------------------------------------------------------------" << endl;
   //  cout << "(XYZ) Calo coords [mm]:                     " << calorimiterPos.X()  << " " << calorimiterPos.Y()    << " " << calorimiterPos.Z()    << endl;
@@ -1004,6 +1004,7 @@ stdVec_i jetCvLIndex(const Vec_f& jet_cvl) {
   int index_sublead_cvl = -1;
   float lead_cvl = 0;
   float sublead_cvl = 0;
+  std::cout << jet_cvl.size() << std::endl;
   for (unsigned int idx = 0; idx < jet_cvl.size(); ++idx) {
     if (lead_cvl < jet_cvl[idx]) {
       lead_cvl = jet_cvl[idx];

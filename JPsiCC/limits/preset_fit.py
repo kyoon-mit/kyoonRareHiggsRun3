@@ -45,7 +45,7 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
         if sig_pdf_type and val['bkg_or_sig']=='sig': val['pdf_type'] = sig_pdf_type
         elif bkg_pdf_type and val['bkg_or_sig']=='bkg': val['pdf_type'] = bkg_pdf_type
         rwc.addDataHist(SAMP=val['SAMP'], filename=val['filename'], treename=val['treename'], var_name='m_mumucc', col_name=val['col_name'], nbins=nbins, weight_name='w')
-        rwc.addPDF(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc')
+        rwc.addPDF(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=2)
     for decay_mother in ('H', 'Z'):
         var_savename = f'm{decay_mother}'
         for val in samp_dict.values():
@@ -81,7 +81,7 @@ if __name__=='__main__':
         'col_name': 'massHiggsCorr',
         'bkg_or_sig': 'sig',
         'decay_mother': 'H',
-        'pdf_type': 'gaussian'}
+        'pdf_type': 'crystalball'}
     samp_dict['sig_Z'] =\
         {'SAMP': 'MC_SIG_Z',
         'filename': os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root'),
@@ -89,10 +89,7 @@ if __name__=='__main__':
         'col_name': 'massHiggsCorr',
         'bkg_or_sig': 'sig',
         'decay_mother': 'Z',
-        'pdf_type': 'gaussian'}
+        'pdf_type': 'crystalball'}
     
     fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True,
-                   samp_dict=samp_dict, var_min=0, var_max=200, SR_low=60, SR_high=160)
-    fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True,
-                   samp_dict=samp_dict, var_min=90, var_max=200, SR_low=90, SR_high=160,
-                   bkg_pdf_type='exponential')
+                   samp_dict=samp_dict, var_min=60, var_max=160, SR_low=60, SR_high=160)
