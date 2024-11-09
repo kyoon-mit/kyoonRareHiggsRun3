@@ -81,7 +81,7 @@ if __name__=='__main__':
         'col_name': 'massHiggsCorr',
         'bkg_or_sig': 'sig',
         'decay_mother': 'H',
-        'pdf_type': 'crystalball'}
+        'pdf_type': 'double_crystal_ball'}
     samp_dict['sig_Z'] =\
         {'SAMP': 'MC_SIG_Z',
         'filename': os.path.join(snapshot_dir, 'snapshotJpsiCC_1001_2018.root'),
@@ -89,7 +89,7 @@ if __name__=='__main__':
         'col_name': 'massHiggsCorr',
         'bkg_or_sig': 'sig',
         'decay_mother': 'Z',
-        'pdf_type': 'crystalball'}
+        'pdf_type': 'double_crystal_ball'}
     
     fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True,
                    samp_dict=samp_dict, var_min=60, var_max=160, SR_low=60, SR_high=160)
