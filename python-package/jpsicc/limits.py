@@ -87,15 +87,14 @@ class RooWorkspaceCreator:
         '''
         wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
         w = wfile.Get(self._wname)
-        match obj_type:
-            case 'var':
-                obj = w.var(obj_name)
-            case 'pdf':
-                obj = w.pdf(obj_name)
-            case 'data':
-                obj = w.data(obj_name)
-            case _:
-                raise ValueError('Invalid obj_type.')
+        if obj_type=='var':
+            obj = w.var(obj_name)
+        elif obj_type=='pdf':
+            obj = w.pdf(obj_name)
+        elif obj_type=='data':
+            obj = w.data(obj_name)
+        else:
+            raise ValueError('Invalid obj_type.')
         return obj
 
     def addVar(self, var_name: str, var_title: str, value: float, var_min: float, var_max: float, unit=''):
@@ -230,29 +229,39 @@ class RooWorkspaceCreator:
 
         Raises:
             ValueError: If pdf_type does not match an existing option.
+            ImportError: If libHiggsAnalysisCombinedLimit.so does not exist.
         '''
         var = self.__readFromWorkspace(var_name, 'var')
-        match pdf_type:
-            case 'gaussian':
-                mu = ROOT.RooRealVar('gauss_mu', 'guass_mu', self._SR_low, self._SR_high)
-                sigma = ROOT.RooRealVar('gauss_sigma', 'guass_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
-                pdf = ROOT.RooGaussian(f'{SAMP}_gaussian', f'{SAMP}_gaussian', var, mu, sigma)
-            case 'double_gaussian':
-                pass
-            case 'crystal_ball':
-                pass
-            case 'exponential':
-                exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
-                pdf = ROOT.RooExponential(f'{SAMP}_exponential', f'{SAMP}_exponential', var, exp_pow1)
-            case 'gaussian_X_exponential': # convolution
-                mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
-                sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
-                gauss_pdf = ROOT.RooGaussian(f'{SAMP}_gaussianX', f'{SAMP}_gaussianX', var, mu, sigma)
-                exp_pow1 = ROOT.RooRealVar('expX_pow1', 'expX_pow1', -0.1, -10., 0.)
-                exp_pdf = ROOT.RooExponential(f'{SAMP}_expX', f'{SAMP}_expX', var, exp_pow1)
-                pdf = ROOT.RooFFTConvPdf(f'{SAMP}_gaussian_X_exponential', f'{SAMP}_gaussian_X_exponential', var, exp_pdf, gauss_pdf)
-            case _:
-                raise ValueError('Invalid pdf_type.')
+        if pdf_type=='gaussian':
+            mu = ROOT.RooRealVar('gauss_mu', 'guass_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gauss_sigma', 'guass_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            pdf = ROOT.RooGaussian(f'{SAMP}_gaussian', f'{SAMP}_gaussian', var, mu, sigma)
+        elif pdf_type=='double_gaussian':
+            pass
+        elif pdf_type=='double_crystal_ball':
+            print('{}kytools: Loading libHiggsAnalysisCombinedLimit.so.{}'.format('\033[0;33m', '\033[0m'))
+            load = ROOT.gSystem.Load('libHiggsAnalysisCombinedLimit.so')
+            if load < 0: raise ImportError('Please compile the Combine package in the README.md instruction.')
+            mu = ROOT.RooRealVar('doubleCB_mu', 'doubleCB_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('doubleCB_sigma', 'doubleCB_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            alphaL = ROOT.RooRealVar('doubleCB_alphaL', 'doubleCB_alphaL', 0.01, 5.0)
+            alphaR = ROOT.RooRealVar('doubleCB_alphaR', 'doubleCB_alphaR', 0.01, 5.0)
+            nL = ROOT.RooRealVar('doubleCB_nL', 'doubleCB_nL', 0.01, 5.0)
+            nR = ROOT.RooRealVar('doubleCB_nR', 'doubleCB_nR', 0.01, 5.0)
+            pdf = ROOT.RooDoubleCBFast(f'{SAMP}_double_crystal_ball', f'{SAMP}_double_crystal_ball',
+                                        var, mu, sigma, alphaL, alphaR, nL, nR)
+        elif pdf_type=='exponential':
+            exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
+            pdf = ROOT.RooExponential(f'{SAMP}_exponential', f'{SAMP}_exponential', var, exp_pow1)
+        elif pdf_type=='gaussian_X_exponential': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gauss_pdf = ROOT.RooGaussian(f'{SAMP}_gaussianX', f'{SAMP}_gaussianX', var, mu, sigma)
+            exp_pow1 = ROOT.RooRealVar('expX_pow1', 'expX_pow1', -0.1, -10., 0.)
+            exp_pdf = ROOT.RooExponential(f'{SAMP}_expX', f'{SAMP}_expX', var, exp_pow1)
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_gaussian_X_exponential', f'{SAMP}_gaussian_X_exponential', var, exp_pdf, gauss_pdf)
+        else:
+            raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
         status = -1
         data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
@@ -275,21 +284,20 @@ class RooWorkspaceCreator:
             else:
                 break
         print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', status, '\033[0m'))
-        match status:
-            case 0:
-                print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
-            case 1:
-                print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
-            case 2:
-                print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
-            case 3:
-                print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
-            case 4:
-                print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
-            case 5:
-                print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
-            case _:
-                print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        if status==0:
+            print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==1:
+            print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==2:
+            print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==3:
+            print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==4:
+            print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==5:
+            print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
+        else:
+            print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
         self.__importToWorkspace(pdf)
         return
 
@@ -312,91 +320,90 @@ class RooWorkspaceCreator:
             ValueError (str): If preset is not one of the following:
                 'mc_sig', 'mc_bkg1', 'mc_bkg2', 'mc_bkg3', or 'data'.
         '''
-        match preset:
-            case 'sig_pdf':
-                self._plot_configs['sig_pdf'] = {
-                    'draw_type': 'line',
-                    'obj_name': f'{SAMP}_{pdf_type}',
-                    'obj_title': pdf_type,
-                    'obj_type': 'pdf',
-                    'SAMP': SAMP,
-                    'LineColor': ROOT.kRed,
-                    'LineStyle': ROOT.kSolid,
-                    'LineWidth': 2,
-                    'MarkerColor': ROOT.kWhite,
-                    'MarkerSize': 0,
-                    'MarkerStyle': ROOT.kDot,
-                    'FillColor': ROOT.kWhite,
-                    'FillStyle': 0, # hollow
-                }
-            case 'bkg_pdf':
-                self._plot_configs['sig_pdf'] = {
-                    'draw_type': 'line',
-                    'obj_name': f'{SAMP}_{pdf_type}',
-                    'obj_title': pdf_type,
-                    'obj_type': 'pdf',
-                    'SAMP': SAMP,
-                    'LineColor': ROOT.kBlue,
-                    'LineStyle': ROOT.kSolid,
-                    'LineWidth': 2,
-                    'MarkerColor': ROOT.kWhite,
-                    'MarkerSize': 0,
-                    'MarkerStyle': ROOT.kDot,
-                    'FillColor': ROOT.kWhite,
-                    'FillStyle': 0, # hollow
-                }
-            case 'mc_bkg1':
-                self._plot_configs['mc_bkg1'] = {
-                    'draw_type': 'solid',
-                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
-                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
-                    'obj_type': 'data',
-                    'SAMP': SAMP,
-                    'LineColor': ROOT.kBlack,
-                    'LineStyle': ROOT.kSolid,
-                    'LineWidth': 0,
-                    'MarkerColor': ROOT.kWhite,
-                    'MarkerSize': 0,
-                    'MarkerStyle': ROOT.kDot,
-                    'FillColor': ROOT.kRed - 4,
-                    'FillStyle': 1001 # solid
-                }
-            case 'mc_bkg2':
-                self._plot_configs['mc_bkg1'] = {
-                    'draw_type': 'solid',
-                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
-                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
-                    'obj_type': 'data',
-                    'SAMP': SAMP,
-                    'LineColor': ROOT.kBlack,
-                    'LineStyle': ROOT.kSolid,
-                    'LineWidth': 0,
-                    'MarkerColor': ROOT.kWhite,
-                    'MarkerSize': 0,
-                    'MarkerStyle': ROOT.kDot,
-                    'FillColor': ROOT.kOrange + 1,
-                    'FillStyle': 1001
-                }
-            case 'mc_bkg3':
-                pass
-            case 'data':
-                self._plot_configs['data'] = {
-                    'draw_type': 'marker',
-                    'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
-                    'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
-                    'obj_type': 'data',
-                    'SAMP': SAMP,
-                    'LineColor': ROOT.kBlack,
-                    'LineStyle': ROOT.kSolid,
-                    'LineWidth': 1,
-                    'MarkerColor': ROOT.kBlack,
-                    'MarkerSize': 0.8,
-                    'MarkerStyle': ROOT.kFullCircle,
-                    'FillColor': ROOT.kWhite,
-                    'FillStyle': 0, # hollow
-                }
-            case _:
-                raise ValueError('Invalid option for preset.')
+        if preset=='sig_pdf':
+            self._plot_configs['sig_pdf'] = {
+                'draw_type': 'line',
+                'obj_name': f'{SAMP}_{pdf_type}',
+                'obj_title': pdf_type,
+                'obj_type': 'pdf',
+                'SAMP': SAMP,
+                'LineColor': ROOT.kRed,
+                'LineStyle': ROOT.kSolid,
+                'LineWidth': 2,
+                'MarkerColor': ROOT.kWhite,
+                'MarkerSize': 0,
+                'MarkerStyle': ROOT.kDot,
+                'FillColor': ROOT.kWhite,
+                'FillStyle': 0, # hollow
+            }
+        elif preset=='bkg_pdf':
+            self._plot_configs['sig_pdf'] = {
+                'draw_type': 'line',
+                'obj_name': f'{SAMP}_{pdf_type}',
+                'obj_title': pdf_type,
+                'obj_type': 'pdf',
+                'SAMP': SAMP,
+                'LineColor': ROOT.kBlue,
+                'LineStyle': ROOT.kSolid,
+                'LineWidth': 2,
+                'MarkerColor': ROOT.kWhite,
+                'MarkerSize': 0,
+                'MarkerStyle': ROOT.kDot,
+                'FillColor': ROOT.kWhite,
+                'FillStyle': 0, # hollow
+            }
+        elif preset=='mc_bkg1':
+            self._plot_configs['mc_bkg1'] = {
+                'draw_type': 'solid',
+                'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
+                'obj_type': 'data',
+                'SAMP': SAMP,
+                'LineColor': ROOT.kBlack,
+                'LineStyle': ROOT.kSolid,
+                'LineWidth': 0,
+                'MarkerColor': ROOT.kWhite,
+                'MarkerSize': 0,
+                'MarkerStyle': ROOT.kDot,
+                'FillColor': ROOT.kRed - 4,
+                'FillStyle': 1001 # solid
+            }
+        elif preset=='mc_bkg2':
+            self._plot_configs['mc_bkg1'] = {
+                'draw_type': 'solid',
+                'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
+                'obj_type': 'data',
+                'SAMP': SAMP,
+                'LineColor': ROOT.kBlack,
+                'LineStyle': ROOT.kSolid,
+                'LineWidth': 0,
+                'MarkerColor': ROOT.kWhite,
+                'MarkerSize': 0,
+                'MarkerStyle': ROOT.kDot,
+                'FillColor': ROOT.kOrange + 1,
+                'FillStyle': 1001
+            }
+        elif preset=='mc_bkg3':
+            pass
+        elif preset=='data':
+            self._plot_configs['data'] = {
+                'draw_type': 'marker',
+                'obj_name': f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}',
+                'obj_title': f'{SAMP}_{self.YEAR}_{self.CAT}',
+                'obj_type': 'data',
+                'SAMP': SAMP,
+                'LineColor': ROOT.kBlack,
+                'LineStyle': ROOT.kSolid,
+                'LineWidth': 1,
+                'MarkerColor': ROOT.kBlack,
+                'MarkerSize': 0.8,
+                'MarkerStyle': ROOT.kFullCircle,
+                'FillColor': ROOT.kWhite,
+                'FillStyle': 0, # hollow
+            }
+        else:
+            raise ValueError('Invalid option for preset.')
         return
     
     def clearConfigPlot(self):
@@ -439,33 +446,32 @@ class RooWorkspaceCreator:
         legend.SetTextSize(.024)
         for config in self._plot_configs.values():
             obj = self.__readFromWorkspace(config['obj_name'], config['obj_type'])
-            match config['draw_type']:
-                case 'line':
-                    obj.plotOn(xframe,
-                               Name=config['obj_name'],
-                               LineColor=config['LineColor'],
-                               LineStyle=config['LineStyle'],
-                               LineWidth=config['LineWidth'],
-                               DrawOption='L')
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'LC')
-                case 'solid':
-                    obj.plotOn(xframe,
-                               Name=config['obj_name'],
-                               FillColor=config['FillColor'],
-                               FillStyle=config['FillStyle'],
-                               LineWidth=config['LineWidth'],
-                               MarkerSize=config['MarkerSize'],
-                               DrawOption='B')
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'F')
-                case 'marker':
-                    obj.plotOn(xframe,
-                               Name=config['obj_name'],
-                               MarkerColor=config['MarkerColor'],
-                               MarkerSize=config['MarkerSize'],
-                               MarkerStyle=config['MarkerStyle'])
-                    legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'EP')
-                case _:
-                    pass
+            if config['draw_type']=='line':
+                obj.plotOn(xframe,
+                            Name=config['obj_name'],
+                            LineColor=config['LineColor'],
+                            LineStyle=config['LineStyle'],
+                            LineWidth=config['LineWidth'],
+                            DrawOption='L')
+                legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'LC')
+            elif config['draw_type']=='solid':
+                obj.plotOn(xframe,
+                            Name=config['obj_name'],
+                            FillColor=config['FillColor'],
+                            FillStyle=config['FillStyle'],
+                            LineWidth=config['LineWidth'],
+                            MarkerSize=config['MarkerSize'],
+                            DrawOption='B')
+                legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'F')
+            elif config['draw_type']=='marker':
+                obj.plotOn(xframe,
+                            Name=config['obj_name'],
+                            MarkerColor=config['MarkerColor'],
+                            MarkerSize=config['MarkerSize'],
+                            MarkerStyle=config['MarkerStyle'])
+                legend.AddEntry(xframe.findObject(config['obj_name']), config['obj_title'], 'EP')
+            else:
+                pass
         xframe.Draw()
         if show_SR:
             line_SR_low = ROOT.TLine(self._SR_low, xframe.GetMinimum(), self._SR_low, xframe.GetMaximum())
