@@ -1,5 +1,5 @@
 #!/bin/bash
 
-conda activate hrare
+cmsenv
 export HRARE_DIR=$(dirname $(realpath -s $BASH_SOURCE[0]))
-pip install $HRARE_DIR/python-package/.
+python3 -m pip install $HRARE_DIR/python-package/.
