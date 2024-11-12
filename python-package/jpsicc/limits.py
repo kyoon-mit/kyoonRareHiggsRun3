@@ -139,7 +139,7 @@ class RooWorkspaceCreator:
         '''
         rdf = ROOT.RDataFrame(treename, filename)
         var = self.__readFromWorkspace(var_name, 'var')
-        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
+        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_dataset'
         data_title = data_name
         if weight_name:
             rdf = rdf.Redefine(weight_name, f'float({weight_name})')
@@ -238,17 +238,34 @@ class RooWorkspaceCreator:
             pdf = ROOT.RooGaussian(f'{SAMP}_gaussian', f'{SAMP}_gaussian', var, mu, sigma)
         elif pdf_type=='double_gaussian':
             pass
-        elif pdf_type=='double_crystal_ball':
+        elif pdf_type=='crystal_ball':
+            mu = ROOT.RooRealVar('CB_mu', 'CB_mu', self._SR_low, self._SR_high)
+            sigmaL = ROOT.RooRealVar('CB_sigmaL', 'CB_sigmaL', 3., 40.)
+            sigmaR = ROOT.RooRealVar('CB_sigmaR', 'CB_sigmaR', 3., 20.)
+            alphaL = ROOT.RooRealVar('CB_alphaL', 'CB_alphaL', .1, 7.)
+            alphaR = ROOT.RooRealVar('CB_alphaR', 'CB_alphaR', .1, 7.)
+            nL = ROOT.RooRealVar('CB_nL', 'CB_nL', .005, 6.)
+            nR = ROOT.RooRealVar('CB_nR', 'CB_nR', .005, 6.)
+            pdf = ROOT.RooCrystalBall(f'{SAMP}_crystal_ball', f'{SAMP}_crystal_ball',
+                                      var, mu, sigmaL, sigmaR, alphaL, alphaR, nL, nR)
+        elif pdf_type=='single_double_sided_crystal_ball':
+            mu = ROOT.RooRealVar('SDSCB_mu', 'SDSCB_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('SDSCB_sigma', 'SDSCB_sigma', 1., 30.)
+            alpha = ROOT.RooRealVar('SDSCB_alpha', 'SDSCB_alpha', .1, 10.)
+            n = ROOT.RooRealVar('SDSCB_n', 'SDSCB_n', .1, 10.)
+            pdf = ROOT.RooCrystalBall(f'{SAMP}_single_double_sided_crystal_ball', f'{SAMP}_single_double_sided_crystal_ball',
+                                        var, mu, sigma, alpha, n)
+        elif pdf_type=='double_sided_crystal_ball':
             print('{}kytools: Loading libHiggsAnalysisCombinedLimit.so.{}'.format('\033[0;33m', '\033[0m'))
             load = ROOT.gSystem.Load('libHiggsAnalysisCombinedLimit.so')
             if load < 0: raise ImportError('Please compile the Combine package in the README.md instruction.')
-            mu = ROOT.RooRealVar('doubleCB_mu', 'doubleCB_mu', self._SR_low, self._SR_high)
-            sigma = ROOT.RooRealVar('doubleCB_sigma', 'doubleCB_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
-            alphaL = ROOT.RooRealVar('doubleCB_alphaL', 'doubleCB_alphaL', 0.01, 5.0)
-            alphaR = ROOT.RooRealVar('doubleCB_alphaR', 'doubleCB_alphaR', 0.01, 5.0)
-            nL = ROOT.RooRealVar('doubleCB_nL', 'doubleCB_nL', 0.01, 5.0)
-            nR = ROOT.RooRealVar('doubleCB_nR', 'doubleCB_nR', 0.01, 5.0)
-            pdf = ROOT.RooDoubleCBFast(f'{SAMP}_double_crystal_ball', f'{SAMP}_double_crystal_ball',
+            mu = ROOT.RooRealVar('DSCB_mu', 'DSCB_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('DSCB_sigma', 'DSCB_sigma', 1., 30.)
+            alphaL = ROOT.RooRealVar('DSCB_alphaL', 'DSCB_alphaL', .1, 10.)
+            alphaR = ROOT.RooRealVar('DSCB_alphaR', 'DSCB_alphaR', .1, 10.)
+            nL = ROOT.RooRealVar('DSCB_nL', 'DSCB_nL', .1, 10.)
+            nR = ROOT.RooRealVar('DSCB_nR', 'DSCB_nR', .1, 10.)
+            pdf = ROOT.RooDoubleCBFast(f'{SAMP}_double_sided_crystal_ball', f'{SAMP}_double_sided_crystal_ball',
                                         var, mu, sigma, alphaL, alphaR, nL, nR)
         elif pdf_type=='exponential':
             exp_pow1 = ROOT.RooRealVar('exp_pow1', 'exp_pow1', -0.1, -10., 0.)
@@ -418,7 +435,7 @@ class RooWorkspaceCreator:
         self._plot_configs = {}
         return
     
-    def makePlot(self, var_name: str, plot_name: str, plot_title: str, show_SR=True, plot_width=1200, plot_height=800):
+    def makePlot(self, var_name: str, plot_name: str, plot_title: str, show_SR=True, resid=True, plot_width=1200, plot_height=800):
         '''Make plot.
 
         Args:
@@ -426,6 +443,8 @@ class RooWorkspaceCreator:
             plot_name (str): Plot name to use for the saved plot.
             plot_title (str): Plot title to display
             show_SR (bool, optional): Display SR as vertical lines on the plot.
+                Defaults to True.
+            resid (bool, optional): Show residuals.
                 Defaults to True.
             plot_width (int, optional): Plot width. Defaults to 600.
             plot_height (int, optional): Plot height. Defaults to 400.
@@ -441,7 +460,7 @@ class RooWorkspaceCreator:
         var = self.__readFromWorkspace(var_name, 'var')
         xframe = var.frame(Title=plot_title)
         self._plot_configs = dict(sorted(self._plot_configs.items())) # data, mc_bkg, mc_sig
-        c = ROOT.TCanvas('c', plot_title, plot_width, plot_height) # Need to create canvas before legend
+        c0 = ROOT.TCanvas('c0', plot_title, plot_width, plot_height) # Need to create canvas before legend
         legend = ROOT.TLegend(0.64, 0.84, 0.97, 0.95)
         legend.SetTextSize(.024)
         for config in self._plot_configs.values():
@@ -483,5 +502,23 @@ class RooWorkspaceCreator:
             line_SR_low.Draw()
             line_SR_high.Draw()
         legend.Draw()
-        c.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}.png'))
+        c0.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}.png'))
+        c0.Close()
+        if resid:
+            c1 = ROOT.TCanvas('c1', plot_title, plot_width, int(plot_height*1.25))
+            pad1 = ROOT.TPad('pad1', 'pad1', 0, .2, 1., 1.)
+            pad2 = ROOT.TPad('pad1', 'pad1', 0, 0., 1., .2)
+            pad1.Draw()
+            pad2.Draw()
+            pad1.cd()
+            xframe.Draw()
+            legend.Draw()
+            pad2.cd()
+            hresid = xframe.residHist()
+            rframe = var.frame(Title='residuals')
+            rframe.addPlotable(hresid, 'P')
+            rframe.Draw()
+            c1.Update()
+            c1.SaveAs(os.path.join(self._plotsavedir, f'{plot_name}_resid.png'))
+            c1.Close()
         return
