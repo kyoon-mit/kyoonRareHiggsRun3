@@ -247,7 +247,7 @@ class RooWorkspaceCreator:
             nL = ROOT.RooRealVar('CB_nL', 'CB_nL', .005, 6.)
             nR = ROOT.RooRealVar('CB_nR', 'CB_nR', .005, 6.)
             pdf = ROOT.RooCrystalBall(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
-                                      var, mu, sigmaL, sigmaR, alphaL, alphaR, nL, nR)
+                                        var, mu, sigmaL, sigmaR, alphaL, alphaR, nL, nR)
         elif pdf_type=='single_double_sided_crystal_ball':
             mu = ROOT.RooRealVar('SDSCB_mu', 'SDSCB_mu', self._SR_low, self._SR_high)
             sigma = ROOT.RooRealVar('SDSCB_sigma', 'SDSCB_sigma', 1., 30.)
@@ -268,7 +268,20 @@ class RooWorkspaceCreator:
             pdf = ROOT.RooDoubleCBFast(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
                                         var, mu, sigma, alphaL, alphaR, nL, nR)
         elif pdf_type=='gaussian_plus_single_double_sided_crystal_ball':
-            pass
+            mu = ROOT.RooRealVar('gauss_mu', 'guass_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gauss_sigma', 'guass_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gauss_pdf = ROOT.RooGaussian(f'{SAMP}_gauss', f'{SAMP}_gauss', var, mu, sigma)
+            mu = ROOT.RooRealVar('SDSCB_mu', 'SDSCB_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('SDSCB_sigma', 'SDSCB_sigma', 1., 30.)
+            alpha = ROOT.RooRealVar('SDSCB_alpha', 'SDSCB_alpha', .1, 10.)
+            n = ROOT.RooRealVar('SDSCB_n', 'SDSCB_n', .1, 10.)
+            sdscb_pdf = ROOT.RooCrystalBall(f'{SAMP}_SDSCB', f'{SAMP}_SDSCB',
+                                            var, mu, sigma, alpha, n)
+            f_sdscb = ROOT.RooRealVar('f_sdscb', 'f_sdscb', 0., 1.) # fraction of the SDSCB
+            pdf = ROOT.RooAddPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
+                                 ROOT.RooArgList(sdscb_pdf, gauss_pdf),
+                                 ROOT.RooArgList(f_sdscb),
+                                 True)
         elif pdf_type=='exponential':
             exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
             pdf = ROOT.RooExponential(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, exp1_pow)
@@ -302,17 +315,38 @@ class RooWorkspaceCreator:
         elif pdf_type=='gaussian_X_double_exponential':
             exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
             exp2_pow = ROOT.RooRealVar('exp2_pow', 'exp2_pow', -0.01, -10., 0.)
-            exp1_pdf = ROOT.RooExponential(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, exp1_pow)
-            exp2_pdf = ROOT.RooExponential(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, exp2_pow)
+            exp1_pdf = ROOT.RooExponential(f'{SAMP}_exp1', f'{SAMP}_{pdf_type}', var, exp1_pow)
+            exp2_pdf = ROOT.RooExponential(f'{SAMP}_exp2', f'{SAMP}_{pdf_type}', var, exp2_pow)
             c_exp1 = ROOT.RooRealVar('c_exp1', 'c_exp1', 0., 1.)
             c_exp2 = ROOT.RooRealVar('c_exp2', 'c_exp2', 0., 1.)
             double_expX_pdf = ROOT.RooAddPdf(f'{SAMP}_double_expX', f'{SAMP}_double_expX',
                                              ROOT.RooArgList(exp1_pdf, exp2_pdf),
-                                             ROOT.RooArgList(c_exp1, c_exp2))
+                                             ROOT.RooArgList(c_exp1, c_exp2),
+                                             False)
             mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
             sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
             gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
             pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, double_expX_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_step_double_exponential':
+            exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
+            exp2_pow = ROOT.RooRealVar('exp2_pow', 'exp2_pow', -0.01, -10., 0.)
+            exp1_pdf = ROOT.RooExponential(f'{SAMP}_exp1', f'{SAMP}_{pdf_type}', var, exp1_pow)
+            exp2_pdf = ROOT.RooExponential(f'{SAMP}_exp2', f'{SAMP}_{pdf_type}', var, exp2_pow)
+            c_exp1 = ROOT.RooRealVar('c_exp1', 'c_exp1', 0., 1.)
+            c_exp2 = ROOT.RooRealVar('c_exp2', 'c_exp2', 0., 1.)
+            double_expX_pdf = ROOT.RooAddPdf(f'{SAMP}_double_expX', f'{SAMP}_double_expX',
+                                             ROOT.RooArgList(exp1_pdf, exp2_pdf),
+                                             ROOT.RooArgList(c_exp1, c_exp2),
+                                             False)
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', self._SR_low, self._SR_high)
+            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
+            step_double_expX_pdf = ROOT.RooProdPdf(f'{SAMP}_step_double_expX', f'{SAMP}_step_double_expX', ROOT.RooArgList(step_pdf, double_expX_pdf))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_double_expX_pdf, gaussX_pdf)
+        # TODO: add bernstein
+        # TODO: add laurent
         else:
             raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
@@ -501,6 +535,9 @@ class RooWorkspaceCreator:
         legend.SetTextSize(.024)
         for config in self._plot_configs.values():
             obj = self.__readFromWorkspace(config['obj_name'], config['obj_type'])
+            if not obj:
+                print (f'{config["obj_name"]} is a null pointer.')
+                continue
             if config['draw_type']=='line':
                 obj.plotOn(xframe,
                             Name=config['obj_name'],
