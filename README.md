@@ -17,7 +17,7 @@ Singularity > cmsenv
 
 3. Clone this repository from GitHub and switch to this branch.
 
-4. Run ```init.sh```.
+4. Run ```init.sh```. This will copy the ```Custom``` folder from this repository to the ```CMSSW_10_6_30/src``` directory and compile with ```scram```.
 ```
 . init.sh
 ```
