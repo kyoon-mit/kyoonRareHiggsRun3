@@ -345,7 +345,150 @@ class RooWorkspaceCreator:
             step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
             step_double_expX_pdf = ROOT.RooProdPdf(f'{SAMP}_step_double_expX', f'{SAMP}_step_double_expX', ROOT.RooArgList(step_pdf, double_expX_pdf))
             pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_double_expX_pdf, gaussX_pdf)
-        # TODO: add bernstein
+        elif pdf_type=='bernstein_0th_order':
+            bern0_c0 = ROOT.RooRealVar('bern0_c0', 'bern0_c0', 0.5, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern0_c0))
+        elif pdf_type=='bernstein_1st_order':
+            bern1_c0 = ROOT.RooRealVar('bern1_c0', 'bern1_c0', 0.5, 0., 1.)
+            bern1_c1 = ROOT.RooRealVar('bern1_c1', 'bern1_c1', 0.1, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern1_c0, bern1_c1))
+        elif pdf_type=='bernstein_2nd_order':
+            bern2_c0 = ROOT.RooRealVar('bern2_c0', 'bern2_c0', 0.5, 0., 1.)
+            bern2_c1 = ROOT.RooRealVar('bern2_c1', 'bern2_c1', 0.1, 0., 1.)
+            bern2_c2 = ROOT.RooRealVar('bern2_c2', 'bern2_c2', 0.1, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern2_c0, bern2_c1, bern2_c2))
+        elif pdf_type=='bernstein_3rd_order':
+            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
+            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.1, 0., 1.)
+            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.1, 0., 1.)
+            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.1, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
+        elif pdf_type=='bernstein_4th_order':
+            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.5, 0., 1.)
+            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.1, 0., 1.)
+            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.1, 0., 1.)
+            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.1, 0., 1.)
+            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.1, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+        elif pdf_type=='bernstein_5th_order':
+            bern5_c0 = ROOT.RooRealVar('bern5_c0', 'bern5_c0', 0.5, 0., 1.)
+            bern5_c1 = ROOT.RooRealVar('bern5_c1', 'bern5_c1', 0.1, 0., 1.)
+            bern5_c2 = ROOT.RooRealVar('bern5_c2', 'bern5_c2', 0.1, 0., 1.)
+            bern5_c3 = ROOT.RooRealVar('bern5_c3', 'bern5_c3', 0.1, 0., 1.)
+            bern5_c4 = ROOT.RooRealVar('bern5_c4', 'bern5_c4', 0.1, 0., 1.)
+            bern5_c5 = ROOT.RooRealVar('bern5_c5', 'bern5_c5', 0.1, 0., 1.)
+            pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                    ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
+        elif pdf_type=='gaussian_X_bernstein_1st_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern1_c0 = ROOT.RooRealVar('bern1_c0', 'bern1_c0', 0.5, 0., 1.)
+            bern1_c1 = ROOT.RooRealVar('bern1_c1', 'bern1_c1', 0.1, 0., 1.)
+            bern1X_pdf = ROOT.RooBernstein(f'{SAMP}_bern1X', f'{SAMP}_bern1X', var,
+                                            ROOT.RooArgList(bern1_c0, bern1_c1))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern1X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_bernstein_2nd_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern2_c0 = ROOT.RooRealVar('bern2_c0', 'bern2_c0', 0.5, 0., 1.)
+            bern2_c1 = ROOT.RooRealVar('bern2_c1', 'bern2_c1', 0.1, 0., 1.)
+            bern2_c2 = ROOT.RooRealVar('bern2_c2', 'bern2_c2', 0.1, 0., 1.)
+            bern2X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                            ROOT.RooArgList(bern2_c0, bern2_c1, bern2_c2))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern2X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_bernstein_3rd_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
+            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.1, 0., 1.)
+            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.1, 0., 1.)
+            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.1, 0., 1.)
+            bern3X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                            ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern3X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_step_double_exponential':
+            exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
+            exp2_pow = ROOT.RooRealVar('exp2_pow', 'exp2_pow', -0.01, -10., 0.)
+            exp1_pdf = ROOT.RooExponential(f'{SAMP}_exp1', f'{SAMP}_{pdf_type}', var, exp1_pow)
+            exp2_pdf = ROOT.RooExponential(f'{SAMP}_exp2', f'{SAMP}_{pdf_type}', var, exp2_pow)
+            c_exp1 = ROOT.RooRealVar('c_exp1', 'c_exp1', 0., 1.)
+            c_exp2 = ROOT.RooRealVar('c_exp2', 'c_exp2', 0., 1.)
+            double_expX_pdf = ROOT.RooAddPdf(f'{SAMP}_double_expX', f'{SAMP}_double_expX',
+                                             ROOT.RooArgList(exp1_pdf, exp2_pdf),
+                                             ROOT.RooArgList(c_exp1, c_exp2),
+                                             False)
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', self._SR_low, self._SR_high)
+            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
+            step_double_expX_pdf = ROOT.RooProdPdf(f'{SAMP}_step_double_expX', f'{SAMP}_step_double_expX',
+                                                   ROOT.RooArgList(step_pdf, double_expX_pdf))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_double_expX_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_step_bernstein_3rd_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
+            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.1, 0., 1.)
+            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.1, 0., 1.)
+            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.1, 0., 1.)
+            bern3X_pdf = ROOT.RooBernstein(f'{SAMP}_bern3X', f'{SAMP}_bern3X', var,
+                                            ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
+            turnon = ROOT.RooRealVar('turnon', 'turnon', self._SR_low, self._SR_high)
+            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
+            step_bern3X_pdf = ROOT.RooProdPdf(f'{SAMP}_step_bern3X', f'{SAMP}_step_bern3X',
+                                              ROOT.RooArgList(step_pdf, bern3X_pdf))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_bern3X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_bernstein_4th_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.5, 0., 1.)
+            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.1, 0., 1.)
+            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.1, 0., 1.)
+            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.1, 0., 1.)
+            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.1, 0., 1.)
+            bern4X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                            ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern4X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_step_bernstein_4th_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.5, 0., 1.)
+            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.1, 0., 1.)
+            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.1, 0., 1.)
+            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.1, 0., 1.)
+            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.1, 0., 1.)
+            bern4X_pdf = ROOT.RooBernstein(f'{SAMP}_bern4X', f'{SAMP}_bern4X', var,
+                                            ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+            turnon = ROOT.RooRealVar('turnon', 'turnon', self._SR_low, self._SR_high)
+            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
+            step_bern4X_pdf = ROOT.RooProdPdf(f'{SAMP}_step_bern4X', f'{SAMP}_step_bern4X',
+                                              ROOT.RooArgList(step_pdf, bern4X_pdf))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_bern4X_pdf, gaussX_pdf)
+        elif pdf_type=='gaussian_X_bernstein_5th_order': # convolution
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', self._SR_low, self._SR_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, (self._SR_high-self._SR_low)*10.)
+            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
+            bern5_c0 = ROOT.RooRealVar('bern5_c0', 'bern5_c0', 0.5, 0., 1.)
+            bern5_c1 = ROOT.RooRealVar('bern5_c1', 'bern5_c1', 0.1, 0., 1.)
+            bern5_c2 = ROOT.RooRealVar('bern5_c2', 'bern5_c2', 0.1, 0., 1.)
+            bern5_c3 = ROOT.RooRealVar('bern5_c3', 'bern5_c3', 0.1, 0., 1.)
+            bern5_c4 = ROOT.RooRealVar('bern5_c4', 'bern5_c4', 0.1, 0., 1.)
+            bern5_c5 = ROOT.RooRealVar('bern5_c5', 'bern5_c5', 0.1, 0., 1.)
+            bern5X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
+                                            ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
+            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, gaussX_pdf, bern5X_pdf)
         # TODO: add laurent
         else:
             raise ValueError('Invalid pdf_type.')
