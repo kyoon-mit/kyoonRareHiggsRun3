@@ -28,7 +28,8 @@ class JPsiCCLoader:
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
         CMSSW (str): Version of the CMSSW.
-        weights (bool): Whether to use weights.
+        weights (bool, optional): Whether to use weights.
+            Defaults to True
     
     Raises:
         ValueError: If the string provided for SAMP is not among the options.
@@ -50,7 +51,7 @@ class JPsiCCLoader:
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
         self.SAMPLE, self.YEAR, self.VERSION, self.CAT, self.CMSSW = SAMP, YEAR, VERS, CAT, CMSSW
-        self.SAMPLENAME = f'{self.SAMPLE}'
+        self.SAMPLENAME = f'{self.SAMPLE}' # Book sample name for plots
         self._weights = weights # bool
 
         self._branches = []   # TBranches to take RDF snapshot of
@@ -64,8 +65,8 @@ class JPsiCCLoader:
         self._date = f'{today.year}{today.month:02}{today.day:02}'
         self._anpath = 'JPsiCC'
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
-        self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
         if not os.path.exists(self._plotsavedir): os.makedirs(self._plotsavedir)
+        self._sfx = f'{SAMP}_{self.YEAR}_{self.CAT}_v{self.VERSION}_{self.CMSSW}_{self._date}_{"WEIGHT" if weights else "NOWEIGHT"}'
 
         # Color scheme: http://arxiv.org/pdf/2107.02270
         self._orange = ROOT.kOrange + 1
@@ -646,18 +647,20 @@ class JPsiCCAnalyzer:
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
-        weights (bool): Whether to use weights.
+        CMSSW (str): Version of the CMSSW.
+        weights (bool, optional): Whether to use weights.
+            Defaults to True.
     
     Raises:
         TypeError: If the value provided for YEAR is not an integer.
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, YEAR, VERS, CAT, weights=True):
+    def __init__(self, YEAR, VERS, CAT, CMSSW, weights=True):
         if not type(YEAR) is int: raise TypeError(f'YEAR must be an integer.')
         if not type(VERS) is str: raise TypeError(f'VERS must be a string.')
         if not type(CAT) is str: raise TypeError(f'CAT must be a string.')
-        self.YEAR, self.VERSION, self.CAT = YEAR, VERS, CAT
+        self.YEAR, self.VERSION, self.CAT, self.CMSSW = YEAR, VERS, CAT, CMSSW
         self._loaders = dict() # Placeholder for JPsiCCLoader
         self._weights = weights
         self._selections = []
@@ -753,7 +756,7 @@ class JPsiCCAnalyzer:
             case 'MC_BKG4': self._DATA, self._MODE = False, 'BKG'
             case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
             case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
-        self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT)
+        self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT, self.CMSSW, self._weights)
         self._loaders[SAMP].readSnapshot(filename, treename, read_pkl=read_pkl)
         if sample_name: self._loaders[SAMP].selectSampleRDF(sample_name)
 
