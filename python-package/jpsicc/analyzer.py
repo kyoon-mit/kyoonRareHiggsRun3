@@ -23,7 +23,7 @@ class JPsiCCLoader:
 
     Args:
         SAMP (str): Either one of the following options.
-            'DATA_BKG', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
+            'DATA', 'MC_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
         YEAR (int): Year of data-taking.
         VERS (str): Version of the files.
         CAT (str): Category of the analysis.
@@ -39,7 +39,7 @@ class JPsiCCLoader:
     '''
     def __init__(self, SAMP, YEAR, VERS, CAT, CMSSW, weights=True):
         match SAMP:
-            case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
+            case 'DATA': self._DATA, self._MODE = True, 'BKG'
             case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
@@ -107,13 +107,13 @@ class JPsiCCLoader:
         Args:
             histo1d (ROOT.TH1D): The histogram.
             SAMP (str):  Either one of the following three options.
-                'DATA_BKG', 'MC_BKG1', 'MC_BKG2', 'MC_BKG3', MC_BKG4', 'MC_SIG'.
+                'DATA', 'MC_BKG1', 'MC_BKG2', 'MC_BKG3', MC_BKG4', 'MC_SIG'.
 
         Returns:
             histo1d (ROOT.TH1D): The histogram.
         '''
         match SAMP:
-            case 'DATA_BKG':
+            case 'DATA':
                 histo1d.SetMarkerStyle(ROOT.kFullSquare)
                 histo1d.SetMarkerSize(0.5)
             case 'MC_BKG':
@@ -686,14 +686,14 @@ class JPsiCCAnalyzer:
         Args:
             histo1d (ROOT.TH1D): The histogram.
             SAMP (str):  Either one of the following three options.
-                'DATA_BKG', 'MC_BKG1', 'MC_BKG2', 'MC_BKG3', MC_BKG4', 'MC_SIG'.
+                'DATA', 'MC_BKG1', 'MC_BKG2', 'MC_BKG3', MC_BKG4', 'MC_SIG'.
 
         Returns:
             histo1d (ROOT.TH1D): The histogram.
         '''
         draw_option = ''
         match SAMP:
-            case 'DATA_BKG':
+            case 'DATA':
                 histo1d.SetMarkerStyle(ROOT.kFullSquare)
                 histo1d.SetMarkerSize(0.5)
                 draw_option = 'P SAME'
@@ -731,7 +731,7 @@ class JPsiCCAnalyzer:
 
         Args:
             SAMP (str): Either one of the following three options.
-                'DATA_BKG', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
+                'DATA', 'MC_BKG1','MC_BKG2', 'MC_BKG3', 'MC_BKG4', 'MC_SIG'
             filename (str): Name of the snapshot ROOT file.
             treename (str, optional): Name of the TTree in the ROOT file.
                 Defaults to 'Events'.
@@ -748,7 +748,7 @@ class JPsiCCAnalyzer:
             (None)
         '''
         match SAMP:
-            case 'DATA_BKG': self._DATA, self._MODE = True, 'BKG'
+            case 'DATA': self._DATA, self._MODE = True, 'BKG'
             case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG1': self._DATA, self._MODE = False, 'BKG'
             case 'MC_BKG2': self._DATA, self._MODE = False, 'BKG'
@@ -773,7 +773,7 @@ class JPsiCCAnalyzer:
                 Defaults to ''.
 
         Raises:
-            KeyError: If any one of MC_BKG, MC_SIG, or DATA_BKG is missing.
+            KeyError: If any one of MC_BKG, MC_SIG, or DATA is missing.
 
         Returns:
             (None)
@@ -782,9 +782,9 @@ class JPsiCCAnalyzer:
         mcbkgs = [self._loaders[s] for s in samples if 'MC_BKG' in s]
         if not mcbkgs: raise KeyError('No MC_BKG sample is found. Please load first.')
         if 'MC_SIG' not in samples: raise KeyError('No MC_SIG sample is found. Please load first.')
-        if 'DATA_BKG' not in samples: raise KeyError('No DATA_BKG sample is found. Please load first.')
+        if 'DATA' not in samples: raise KeyError('No DATA sample is found. Please load first.')
         mcsig = self._loaders['MC_SIG']
-        databkg = self._loaders['DATA_BKG']
+        databkg = self._loaders['DATA']
 
         hist_dict = databkg.makeHistos(plot=False, draw=False, keys=keys)
 
@@ -853,7 +853,7 @@ class JPsiCCAnalyzer:
             c_hstack.SaveAs(os.path.join(self._plotsavedir, f'{key}_{sfx}.png'))
 
             # Print integrals
-            print(f'MCBKG integral: {mcbkg_norm:.3f}, DATABKG integral: {data_hist.Integral():.3f}')
+            print(f'MCBKG integral: {mcbkg_norm:.3f}, DATA integral: {data_hist.Integral():.3f}')
         return
 
     def countNeventsPerSample(self, cut, weights=True):
