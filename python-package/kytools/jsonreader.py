@@ -96,17 +96,29 @@ def get_object_from_json(anpath, jsonname, keys):
         raise TypeError('JSON object is not list(str).')
     return jsonobject
 
-def get_rdf_from_json_spec(anpath, jsonname):
+def get_rdf_from_json_spec(anpath, jsonname, calc_nfiles=False):
     """Retrieve an RDataFrame from JSON spec file.
 
     Args:
         anpath (str): Path to the analysis folder, relative to HRARE_DIR.
             e.g. 'JPsiCC'
         jsonname (str): Name of the JSON file.
+        calc_nfiles (bool, optional): Calculate the number of files in the JSON spec file.
+            Defaults to False.
 
     Returns:
         rdf (ROOT.RDataFrame): Retrieved ROOT.RDataFrame object.
     """
     jsonfile = os.path.join(os.environ['HRARE_DIR'], anpath, 'json', jsonname)
+    if calc_nfiles:
+        nfiles_total = 0
+        samples = get_object_from_json(anpath, jsonname, ['samples'])
+        print_detailed = '..... SAMPLE              | NUMBER OF FILES'
+        for key_sample in samples.keys():
+            nfiles_sample = len(samples[key_sample]['files'])
+            nfiles_total += nfiles_sample
+            print_detailed += f'\n..... {'_'.join(key_sample.split()[:2]):19.19} | {nfiles_sample}'
+        print(f'INFO: the total number of files in {jsonname} is {nfiles_total}.')
+        print(print_detailed)
     rdf = RDF.Experimental.FromSpec(jsonfile)
     return rdf

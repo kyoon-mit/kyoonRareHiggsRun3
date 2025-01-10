@@ -128,7 +128,7 @@ def add_rdf_def(rdf, key, CMSSW, filter=True, cut_flow_dict=None):
                     print(f'WARNING: a column named \'{rvar}\' could not be defined, so it is renamed to \'{rvar}_user\' instead.')
                     new_rdf = new_rdf.Define(f'{rvar}_user', rdict['def'])
                     branches.append(f'{rvar}_user')
-                branches.append(rvar)
+            branches.append(rvar)
         elif filter:
             if 'filter' in rdict:
                 try:

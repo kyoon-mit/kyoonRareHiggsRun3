@@ -29,7 +29,9 @@ class JPsiCCLoader:
         CAT (str): Category of the analysis.
         CMSSW (str): Version of the CMSSW.
         weights (bool, optional): Whether to use weights.
-            Defaults to True
+            Defaults to True.
+        verbose (bool, optional): Experimental. Whether to print info messages.
+            Defaults to True.
     
     Raises:
         ValueError: If the string provided for SAMP is not among the options.
@@ -37,7 +39,7 @@ class JPsiCCLoader:
         TypeError: If the value provided for VERS is not a string.
         TypeError: If the value provided for CAT is not a string.
     '''
-    def __init__(self, SAMP, YEAR, VERS, CAT, CMSSW, weights=True):
+    def __init__(self, SAMP, YEAR, VERS, CAT, CMSSW, weights=True, verbose=True):
         match SAMP:
             case 'DATA': self._DATA, self._MODE = True, 'BKG'
             case 'MC_BKG': self._DATA, self._MODE = False, 'BKG'
@@ -78,6 +80,8 @@ class JPsiCCLoader:
         self._violet = ROOT.kViolet + 2
 
         self._draw_option = 'P SAME' if self._DATA else 'HIST'
+
+        if verbose: print('{}INFO: Created instance of JPsiCCLoader for {}.{}'.format('\033[1;33m', self.SAMPLE, '\033[0m'))
     
     def __draw_hist(self, histo1d, model1d, draw_option='HIST'):
         '''Internal method for drawing histogram.
@@ -240,7 +244,7 @@ class JPsiCCLoader:
         '''
         if not self._DATA:
             raise Exception('Please try again for data.')
-        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
+        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json, calc_nfiles=True)
         self._rdf, self._branches = rdfdefines.rdf_def_sample_meta(self._rdf, self._branches)
         self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(None, self._rdf, self._branches, self._cutflow, data=self._DATA)
         return
@@ -257,8 +261,8 @@ class JPsiCCLoader:
         Returns:
             (None)
         '''
-        rdf_runs = jsonreader.get_rdf_from_json_spec(self._anpath, run_spec_json)
-        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json)
+        rdf_runs = jsonreader.get_rdf_from_json_spec(self._anpath, run_spec_json, calc_nfiles=False)
+        self._rdf = jsonreader.get_rdf_from_json_spec(self._anpath, event_spec_json, calc_nfiles=True)
         rdf_runs, _ = rdfdefines.rdf_def_sample_meta(rdf_runs)
         self._rdf, self._branches = rdfdefines.rdf_def_sample_meta(self._rdf, self._branches)
         self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_weights(rdf_runs, self._rdf, self._branches, self._cutflow, data=self._DATA)
@@ -300,6 +304,8 @@ class JPsiCCLoader:
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
                     self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_higgs)
+                else:
+                    print('INFO: leaving out RDF Higgs definitions for DATA.')
             case 'NANOAOD_JETS':
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
             case _: pass
@@ -529,8 +535,9 @@ class JPsiCCLoader:
                 hist_dict.update(hist_defs['vertex'])
                 hist_dict.update(hist_defs['jet'])
                 hist_dict.update(hist_defs['muon_jet_matching'])
-                hist_dict.update(hist_defs['higgs'])
-                if not self._DATA: hist_dict.update(hist_defs['jet_mconly'])
+                if not self._DATA:
+                    hist_dict.update(hist_defs['jet_mconly'])
+                    hist_dict.update(hist_defs['higgs'])
                 if genplots: hist_dict.update(hist_defs['gen'])
             case 'NANOAOD_JETS':
                 hist_dict.update(hist_defs['jet'])
@@ -680,6 +687,8 @@ class JPsiCCAnalyzer:
         self._plotsavedir = os.path.join(os.environ['HRARE_DIR'], self._anpath, 'plots', f'v{self.VERSION}', self._date, CAT)
         self._sfx = f'{self.YEAR}_{self.CAT}_v{self.VERSION}_{self._date}'
 
+        print('{}INFO: Created instance of JPsiCCAnalyzer.{}'.format('\033[1;33m', '\033[0m'))
+
     def __set_hist_style(self, histo1d, SAMP):
         '''Set the histogram style.
 
@@ -756,7 +765,8 @@ class JPsiCCAnalyzer:
             case 'MC_BKG4': self._DATA, self._MODE = False, 'BKG'
             case 'MC_SIG': self._DATA, self._MODE = False, 'SIG'
             case _: raise ValueError(f'SAMP={SAMP} is not a valid option.')
-        self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT, self.CMSSW, self._weights)
+        self._loaders[SAMP] = JPsiCCLoader(SAMP, self.YEAR, self.VERSION, self.CAT,
+                                           self.CMSSW, self._weights, verbose=False)
         self._loaders[SAMP].readSnapshot(filename, treename, read_pkl=read_pkl)
         if sample_name: self._loaders[SAMP].selectSampleRDF(sample_name)
 
@@ -784,9 +794,9 @@ class JPsiCCAnalyzer:
         if 'MC_SIG' not in samples: raise KeyError('No MC_SIG sample is found. Please load first.')
         if 'DATA' not in samples: raise KeyError('No DATA sample is found. Please load first.')
         mcsig = self._loaders['MC_SIG']
-        databkg = self._loaders['DATA']
+        data = self._loaders['DATA']
 
-        hist_dict = databkg.makeHistos(plot=False, draw=False, keys=keys)
+        hist_dict = data.makeHistos(plot=False, draw=False, keys=keys)
 
         for samp in samples:
             self._loaders[samp].plot_hists(hist_dict, draw=draw_indiv, user_sfx=user_sfx)
@@ -804,8 +814,12 @@ class JPsiCCAnalyzer:
             legend.SetMargin(0.2)
 
             # Create THStack
-            hname = f'{hdef["name"]}_MULTI_STACK_{self.YEAR}_{self.CAT}'
-            model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
+            try:
+                hname = f'{hdef["name"]}_MULTI_STACK_{self.YEAR}_{self.CAT}'
+                model1d = (hname, hdef['title'], hdef['bin'], hdef['xmin'], hdef['xmax'])
+            except:
+                print(f'Not stacking histogram for {key} because of KeyError.')
+                continue
             hs = ROOT.THStack()
 
             # Stack mcbkg
@@ -822,12 +836,12 @@ class JPsiCCAnalyzer:
             hs.Draw()
 
             # Draw data
-            data_hist = databkg.retrieveHisto(key)
+            data_hist = data.retrieveHisto(key)
             if data_hist:
                 data_hist.SetStats(False)
-                data_hist, databkg_d_opt = self.__set_hist_style(data_hist, databkg.SAMPLE)
-                data_hist.Draw(databkg_d_opt)
-                legend.AddEntry(data_hist.GetPtr(), f'{databkg.SAMPLENAME} ({data_hist.Integral():.2E})', 'P')
+                data_hist, data_d_opt = self.__set_hist_style(data_hist, data.SAMPLE)
+                data_hist.Draw(data_d_opt)
+                legend.AddEntry(data_hist.GetPtr(), f'{data.SAMPLENAME} ({data_hist.Integral():.2E})', 'P')
 
             # Draw signal
             sig_hist = mcsig.retrieveHisto(key)
