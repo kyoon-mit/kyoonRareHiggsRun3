@@ -294,14 +294,14 @@ class JPsiCCLoader:
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_vertex(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_vertex)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muons(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_muons)
                 self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jpsi(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_jpsi)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muon_jet_matching(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=False)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_muon_jet_matching(self._rdf, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=False)
                 if self.SAMPLE=='MC_SIG':
                     self._rdf, self._branches = rdfdefines.rdf_def_genpart(self._rdf, self._branches)
                 if not self._DATA:
                     self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_higgs(self._rdf, self.CMSSW, self._branches, self._cutflow, filter=filter_higgs)
             case 'NANOAOD_JETS':
-                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CAT, self.YEAR, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
+                self._rdf, self._branches, self._cutflow = rdfdefines.rdf_def_jets(self._rdf, self.CMSSW, self._branches, self._cutflow, data=self._DATA, filter=filter_jets)
             case _: pass
         end_time = process_time()
         print('{}INFO: defineColumnsRDF process time is {:.8f}s.{}'.format('\033[1;32m', end_time - start_time, '\033[0m'))
