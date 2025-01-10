@@ -3,7 +3,9 @@
     {
         "GF_2018":
         {
-            "trigger": {"def": "HLT_Dimuon25_Jpsi"}
+            "trigger": {"def": "(HLT_Dimuon25_Jpsi or HLT_Dimuon25_Jpsi_noCorrL1)"},
+            "goodMeson": {"def": "(Jpsi_kin_pt > 25)"},
+            "filter_trigger": {"filter": "trigger > 0", "description": "Passing trigger"}
         },
         "NANOAOD_JETS_2018":
         {
@@ -11,6 +13,9 @@
         },
         "Jpsi":
         {
+            "nJpsi": {"def": "", "name": "nJpsi", "title": "nJpsi", "bin": 5, "xmin": 0.0, "xmax": 5.0},
+            "filter_nJpsi": {"filter": "nJpsi > 0", "description": "At least one Jpsi"},
+            "filter_goodMeson": {"filter": "Sum(goodMeson) > 0", "description": "At least one good Jpsi"},
             "Jpsi_kin_mass": {"def": "", "name": "Jpsi_kin_mass", "title": "Jpsi mass; m_{#mu^{+}#mu^{-}} (GeV); N_{Events}", "bin": 120, "xmin": 1.5, "xmax": 4.5},
             "Jpsi_kin_pt": {"def": "", "name": "Jpsi_kin_pt", "title": "Jpsi p_{T}; p_{T} {#mu^{+}#mu^{-}} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},        
             "Jpsi_muon1_pt": {"def": "", "name": "Jpsi_muon1_pt", "title": "Jpsi muon1 p_{T}; p_{T}(#mu1) (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
@@ -40,7 +45,6 @@
             "Jpsi_leadingCharged3dSignMaxPt2": {"def": "", "name": "Jpsi_leadingCharged3dSignMaxPt2", "title": "Jpsi 3dSignMaxPt1 subLeadingCharged within ConedR04; p_{T}", "bin": 200, "xmin": -10, "xmax": 10.0},
             "Jpsi_leadingChargedDxyMaxPt2": {"def": "", "name": "Jpsi_leadingChargedDxyMaxPt2", "title": "Jpsi Dxy subLeadingCharged within ConedR04; d_{xy}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
             "Jpsi_leadingChargedDzMaxPt2": {"def": "", "name": "Jpsi_leadingChargedDzMaxPt2", "title": "Jpsi Dz subLeadingCharged within ConedR04; d_{z}", "bin": 200, "xmin": -0.1, "xmax": 0.1},
-            "nJpsi": {"def": "", "name": "nJpsi", "title": "nJpsi", "bin": 5, "xmin": 0.0, "xmax": 5.0},
             "Jpsi_muon1_muon2_dR": {"def": "deltaR(Jpsi_muon1_eta[0], Jpsi_muon1_phi[0], Jpsi_muon2_eta[0], Jpsi_muon2_phi[0])",
             "name": "Jpsi_muon1_muon2_dR", "title": "dR between #mu #mu; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "alt_Jpsi_cand": {"def": "JpsiFromBestMuons(Muon_pt, Muon_eta, Muon_phi, Muon_mass)"},
@@ -67,10 +71,11 @@
             "jetMass": {"def": "Jet_mass", "name": "jetMass", "title": "jet mass; jet mass; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 500.0},
             "jetCvL": {"def": "Jet_btagDeepCvL", "name": "jetCvL", "title": "jet CvL; CvL=P(c)/(P(c)+P(udsg)); N_{Events}", "bin": 80, "xmin": -2.0, "xmax": 2.0},
             "jetCvB": {"def": "Jet_btagDeepCvB", "name": "jetCvB", "title": "jet CvB; CvB=P(b)/(P(c)+P(b)); N_{Events}", "bin": 80, "xmin": -2.0, "xmax": 2.0},
-            "goodJets": {"def": "(Jet_pt > 0 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL >= -1)"},
+            "goodJets": {"def": "(Jet_pt > 20 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL >= -1)"},
             "nJet": {"def": "", "name": "nJet", "title": "nJet; ak4 PFJets CHS with JECs applied, after basic selection (pt > 15); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "nGoodJets": {"def": "Sum(goodJets)", "name": "nGoodJets", "title": "nGoodJets; number of jets matching (Jet_pt > 15 && abs(Jet_eta) < 2.5 && Jet_btagDeepCvL > -1); N_{Events}", "bin": 5, "xmin": 0.0, "xmax": 50.0},
-            "goodJetPt": {"def": "Jet_pt[goodJets]", "name": "goodJetPt", "title": "Good Jet p_{T}; good jet p_{T}} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "filter_nGoodJets": {"filter": "(nGoodJets > 1)", "description": "At least two goodJets"},
+            "goodJetPt": {"def": "Jet_pt[goodJets]", "name": "goodJetPt", "title": "Good Jet p_{T}; good jet p_{T} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "goodJetPhi": {"def": "Jet_phi[goodJets]", "name": "goodJetPhi", "title": "Good Jet phi; good jet phi; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
             "goodJetEta": {"def": "Jet_eta[goodJets]", "name": "goodJetEta", "title": "Good Jet eta; good jet eta; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
             "goodJetMass": {"def": "Jet_mass[goodJets]", "name": "goodJetMass", "title": "Good Jet mass; good jet mass; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 500.0},
@@ -82,7 +87,6 @@
             "goodJetNeHEF": {"def": "Jet_neHEF[goodJets]", "name": "goodJetNeHEF", "title": "GoodJet Neutral Hadron EF; good jet neutral hadron energy fraction; N_{Events}", "bin": 40, "xmin": -1.0, "xmax": 1.0},
             "goodJet_nMuons": {"def": "Sum(Jet_nMuons[goodJets])", "name": "goodJet_nMuons", "title": "GoodJet nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
             "goodJet_nElectrons": {"def": "Sum(Jet_nElectrons[goodJets])", "name": "goodJet_nElectrons", "title": "GoodJet Electrons; nElectrons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
-            "goodJet_partonFlavour": {"def": "abs(Jet_partonFlavour[goodJets])", "name": "goodJet_partonFlavour", "title": "GoodJet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "jet1_pt": {"def": "goodJetPt[0]", "name": "jet1_pt", "title": "Leading Jet p_{T}; AK4 jet p_{T} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "jet2_pt": {"def": "goodJetPt[1]", "name": "jet2_pt", "title": "Subleading Jet p_{T}; AK4 jet p_{T} (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
             "jet1_eta": {"def": "goodJetEta[0]", "name": "jet1_eta", "title": "Leading Jet eta; AK4 jet eta (GeV); N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
@@ -96,51 +100,57 @@
             "jet1_jet2_mass": {"def": "Minv(goodJetPt, goodJetEta, goodJetPhi, goodJetMass)",
                                "name": "jet1_jet2_mass", "title": "Invariant mass of the jets; AK4 jet eta (GeV); N_{Events}", "bin": 500, "xmin": 0.0, "xmax": 500.0},
             "index_CloseFar": {"def": "jetCloseFar(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass)"},
+            "index_Close": {"def": "index_CloseFar[0]", "name": "index_Close", "title": "Index of the close jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
+            "index_Far": {"def": "index_CloseFar[1]", "name": "index_Far", "title": "Index of the far jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
+            "bool_CloseFar_exist": {"def": "(index_Close!=-1 && index_Far!=-1) ? 1 : 0"}, 
+            "filter_indexClose": {"filter": "index_Close!=-1", "description": "At least one close jet"},
             "index_CvL": {"def": "jetCvLIndex(goodJetCvL)"},
             "index_leading_CvL": {"def": "index_CvL[0]", "name": "index_leading_CvL", "title": "index of the leading CvL jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
             "index_subleading_CvL": {"def": "index_CvL[1]", "name": "index_subleading_CvL", "title": "index of the subleading CvL jet", "bin": 7, "xmin": -1.5, "xmax": 5.5},
-            "jetClose_nMuons": {"def": "Jet_nMuons[goodJets][index_CloseFar[0]]", "name": "jetClose_nMuons", "title": "Close nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.00, "xmax": 10.0},
-            "jetFar_nMuons": {"def": "Jet_nMuons[goodJets][index_CloseFar[1]]", "name": "jetFar_nMuons", "title": "Far nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
-            "jetClose_nElectrons": {"def": "Jet_nElectrons[goodJets][index_CloseFar[0]]", "name": "jetClose_nElectrons", "title": "Close Electrons; nElectron; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
-            "jetFar_nElectrons": {"def": "Jet_nElectrons[goodJets][index_CloseFar[1]]", "name": "jetFar_nElectrons", "title": "Far Electrons; nElectrons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
-            "jetClose_pt": {"def": "goodJetPt[index_CloseFar[0]]", "name": "jetClose_pt", "title": "Jet Close; AK4 pt Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "jetFar_pt": {"def": "goodJetPt[index_CloseFar[1]]", "name": "jetFar_pt", "title": "Jet Far; AK4 pt Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "jetClose_eta": {"def": "goodJetEta[index_CloseFar[0]]", "name": "jetClose_eta", "title": "Jet Close; AK4 eta Close; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
-            "jetFar_eta": {"def": "goodJetEta[index_CloseFar[1]]", "name": "jetFar_eta", "title": "Jet Far; AK4 eta Far; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
-            "jetClose_phi": {"def": "goodJetPhi[index_CloseFar[0]]", "name": "jetClose_phi", "title": "Jet Close; AK4 phi Close; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
-            "jetFar_phi": {"def": "goodJetPhi[index_CloseFar[1]]", "name": "jetFar_phi", "title": "Jet Far; AK4 phi Far; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
-            "jetClose_cRegCorr": {"def": "Jet_cRegCorr[goodJets][index_CloseFar[0]]", "name": "jetClose_cRegCorr", "title": "cRegCorr; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetFar_cRegCorr": {"def": "Jet_cRegCorr[goodJets][index_CloseFar[1]]", "name": "jetFar_cRegCorr", "title": "Jet Far; cRegCorr ; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetClose_cRegRes": {"def": "Jet_cRegRes[goodJets][index_CloseFar[0]]", "name": "jetClose_cRegRes", "title": "cRegCorr; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetFar_cRegRes": {"def": "Jet_cRegRes[goodJets][index_CloseFar[1]]", "name": "jetFar_cRegRes", "title": "Jet Far; cRegCorr ; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetClose_CvL": {"def": "goodJetCvL[index_CloseFar[0]]", "name": "jetClose_CvL", "title": "Jet Close; AK4 btagDeepCvL Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetFar_CvL": {"def": "goodJetCvL[index_CloseFar[1]]", "name": "jetFar_CvL", "title": "Jet Far; AK4 btagDeepCvL Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetClose_CvB": {"def": "goodJetCvB[index_CloseFar[0]]", "name": "jetClose_CvB", "title": "Jet Close; AK4 btagDeepCvB Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetFar_CvB": {"def": "goodJetCvB[index_CloseFar[1]]", "name": "jetFar_CvB", "title": "Jet Far; AK4 btagDeepCvB Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetClose_nConst": {"def": "Jet_nConstituents[goodJets][index_CloseFar[0]]", "name": "jetClose_nConst", "title": "Jet Close; AK4 n constituent Close; N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
-            "jetFar_nConst": {"def": "Jet_nConstituents[goodJets][index_CloseFar[1]]", "name": "jetFar_nConst", "title": "Jet Far; AK4 n constituent Far; N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
-            "jetClose_JpsiPtRatio": {"def": "Jpsi_kin_pt[0]/jetClose_pt", "name": "jetClose_JpsiPtRatio", "title": "Jet Close; pt(JPsi) / AK4 pt(Jet); N_{Events}", "bin": 40, "xmin": 0.0, "xmax": 2.0},
-            "jetFar_JpsiPtRatio": {"def": "Jpsi_kin_pt[0]/jetFar_pt", "name": "jetFar_JpsiPtRatio", "title": "Jet Far; pt(JPsi) / AK4 pt(Jet); N_{Events}", "bin": 40, "xmin": 0.0, "xmax": 2.0},
-            "jetClose_muonIdx1": {"def": "Jet_muonIdx1[goodJets][index_CloseFar[0]]", "name": "jetClose_muonIdx1", "title": "Jet Close; Index of first matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
-            "jetClose_muonIdx2": {"def": "Jet_muonIdx2[goodJets][index_CloseFar[0]]", "name": "jetClose_muonIdx2", "title": "Jet Close; Index of second matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
-            "jetFar_muonIdx1": {"def": "Jet_muonIdx1[goodJets][index_CloseFar[1]]", "name": "jetFar_muonIdx1", "title": "Jet Far; Index of first matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
-            "jetFar_muonIdx2": {"def": "Jet_muonIdx2[goodJets][index_CloseFar[1]]", "name": "jetFar_muonIdx2", "title": "Jet Far; Index of second matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5}
+            "jetClose_nMuons": {"def": "(bool_CloseFar_exist) ? Jet_nMuons[goodJets][index_Close] : -1", "name": "jetClose_nMuons", "title": "Close nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.00, "xmax": 10.0},
+            "jetFar_nMuons": {"def": "(bool_CloseFar_exist) ? Jet_nMuons[goodJets][index_Far] : -1", "name": "jetFar_nMuons", "title": "Far nMuons; nMuons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetClose_nElectrons": {"def": "(bool_CloseFar_exist) ? Jet_nElectrons[goodJets][index_Close] : -1", "name": "jetClose_nElectrons", "title": "Close Electrons; nElectron; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetFar_nElectrons": {"def": "(bool_CloseFar_exist) ? Jet_nElectrons[goodJets][index_Far] : -1", "name": "jetFar_nElectrons", "title": "Far Electrons; nElectrons; N_{Events}", "bin": 10, "xmin": 0.0, "xmax": 10.0},
+            "jetClose_pt": {"def": "(bool_CloseFar_exist) ? goodJetPt[index_Close] : -1", "name": "jetClose_pt", "title": "Jet Close; AK4 pt Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFar_pt": {"def": "(bool_CloseFar_exist) ? goodJetPt[index_Far] : -1", "name": "jetFar_pt", "title": "Jet Far; AK4 pt Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "filter_jetFar_pt": {"filter": "jetFar_pt > 30", "description": "30 GeV threshold for jetFar"}, 
+            "jetClose_eta": {"def": "(bool_CloseFar_exist) ? goodJetEta[index_Close] : -1", "name": "jetClose_eta", "title": "Jet Close; AK4 eta Close; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
+            "jetFar_eta": {"def": "(bool_CloseFar_exist) ? goodJetEta[index_Far] : -1", "name": "jetFar_eta", "title": "Jet Far; AK4 eta Far; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
+            "jetClose_phi": {"def": "(bool_CloseFar_exist) ? goodJetPhi[index_Close] : -1", "name": "jetClose_phi", "title": "Jet Close; AK4 phi Close; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
+            "jetFar_phi": {"def": "(bool_CloseFar_exist) ? goodJetPhi[index_Far] : -1", "name": "jetFar_phi", "title": "Jet Far; AK4 phi Far; N_{Events}", "bin": 200, "xmin": -5.0, "xmax": 5.0},
+            "jetClose_cRegCorr": {"def": "(bool_CloseFar_exist) ? Jet_cRegCorr[goodJets][index_Close] : -1", "name": "jetClose_cRegCorr", "title": "cRegCorr; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFar_cRegCorr": {"def": "(bool_CloseFar_exist) ? Jet_cRegCorr[goodJets][index_Far] : -1", "name": "jetFar_cRegCorr", "title": "Jet Far; cRegCorr ; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetClose_cRegRes": {"def": "(bool_CloseFar_exist) ? Jet_cRegRes[goodJets][index_Close] : -1", "name": "jetClose_cRegRes", "title": "cRegCorr; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFar_cRegRes": {"def": "(bool_CloseFar_exist) ? Jet_cRegRes[goodJets][index_Far]: -1", "name": "jetFar_cRegRes", "title": "Jet Far; cRegCorr ; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetClose_CvL": {"def": "(bool_CloseFar_exist) ? goodJetCvL[index_Close] : -1", "name": "jetClose_CvL", "title": "Jet Close; AK4 btagDeepCvL Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFar_CvL": {"def": "(bool_CloseFar_exist) ? goodJetCvL[index_Far] : -1", "name": "jetFar_CvL", "title": "Jet Far; AK4 btagDeepCvL Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetClose_CvB": {"def": "(bool_CloseFar_exist) ? goodJetCvB[index_Close] : -1", "name": "jetClose_CvB", "title": "Jet Close; AK4 btagDeepCvB Close (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFar_CvB": {"def": "(bool_CloseFar_exist) ? goodJetCvB[index_Far] : -1", "name": "jetFar_CvB", "title": "Jet Far; AK4 btagDeepCvB Far (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetClose_nConst": {"def": "(bool_CloseFar_exist) ? Jet_nConstituents[goodJets][index_Close] : -1", "name": "jetClose_nConst", "title": "Jet Close; AK4 n constituent Close; N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
+            "jetFar_nConst": {"def": "(bool_CloseFar_exist) ? Jet_nConstituents[goodJets][index_Far] : -1", "name": "jetFar_nConst", "title": "Jet Far; AK4 n constituent Far; N_{Events}", "bin": 20, "xmin": 0.0, "xmax": 40.0},
+            "jetClose_JpsiPtRatio": {"def": "(bool_CloseFar_exist) ? Jpsi_kin_pt[0]/jetClose_pt : -1", "name": "jetClose_JpsiPtRatio", "title": "Jet Close; pt(JPsi) / AK4 pt(Jet); N_{Events}", "bin": 40, "xmin": 0.0, "xmax": 2.0},
+            "jetFar_JpsiPtRatio": {"def": "(bool_CloseFar_exist) ? Jpsi_kin_pt[0]/jetFar_pt : -1", "name": "jetFar_JpsiPtRatio", "title": "Jet Far; pt(JPsi) / AK4 pt(Jet); N_{Events}", "bin": 40, "xmin": 0.0, "xmax": 2.0},
+            "jetClose_muonIdx1": {"def": "(bool_CloseFar_exist) ? Jet_muonIdx1[goodJets][index_Close] : -1", "name": "jetClose_muonIdx1", "title": "Jet Close; Index of first matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
+            "jetClose_muonIdx2": {"def": "(bool_CloseFar_exist) ? Jet_muonIdx2[goodJets][index_Close] : -1", "name": "jetClose_muonIdx2", "title": "Jet Close; Index of second matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
+            "jetFar_muonIdx1": {"def": "(bool_CloseFar_exist) ? Jet_muonIdx1[goodJets][index_Far] : -1", "name": "jetFar_muonIdx1", "title": "Jet Far; Index of first matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5},
+            "jetFar_muonIdx2": {"def": "(bool_CloseFar_exist) ? Jet_muonIdx2[goodJets][index_Far] : -1", "name": "jetFar_muonIdx2", "title": "Jet Far; Index of second matching muon", "bin": 11, "xmin":-0.5, "xmax": 10.5}
         },
         "jet_mconly":
         {
+            "goodJet_partonFlavour": {"def": "abs(Jet_partonFlavour[goodJets])", "name": "goodJet_partonFlavour", "title": "GoodJet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "jet1_partonFlavour": {"def": "abs(goodJet_partonFlavour[0])", "name": "jet1_partonFlavour", "title": "Leading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "jet2_partonFlavour": {"def": "abs(goodJet_partonFlavour[1])", "name": "jet2_partonFlavour", "title": "Subleading Jet partonFlavour; partonFlavour; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
             "charms_are_jet1_and_2": {"def": "((abs(goodJet_partonFlavour[0])==4) && (abs(goodJet_partonFlavour[1])==4)) ? 1: 0", "name": "charms_are_jet1_and_2", "title": "Whether charm jets are leading AND subleading jets", "bin": 2, "xmin": -0.5, "xmax": 1.5},
-            "jetClose_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_CloseFar[0]])", "name": "jetClose_partonFlavour", "title": "Jet Close; AK4 partonFlavour Close; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},   
-            "jetFar_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_CloseFar[1]])", "name": "jetFar_partonFlavour", "title": "Jet Far; AK4 partonFlavour Far; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
-            "jetFar_ptCharm": {"def": "(abs(goodJet_partonFlavour[index_CloseFar[1]])==4) ? Jet_cRegCorr[goodJets][index_CloseFar[1]] * goodJetPt[index_CloseFar[1]]: -1.", "name": "jetFar_ptCharm", "title": "Jet Far; AK4 pt Far (charm)(GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "jetFar_ptGluon": {"def": "(abs(goodJet_partonFlavour[index_CloseFar[1]])==21) ? Jet_cRegCorr[goodJets][index_CloseFar[1]] * goodJetPt[index_CloseFar[1]]: -1.", "name": "jetFar_ptGluon", "title": "Jet Far; AK4 pt Far (gluon) (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
-            "jetFar_CvLCharm": {"def": "(abs(goodJet_partonFlavour[index_CloseFar[1]])==4) ? goodJetCvL[index_CloseFar[1]]: -1.", "name": "jetFar_CvLCharm", "title": "Jet Far; AK4 btagDeepCvL Far -- charm (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetFar_CvLGluon": {"def": "(abs(goodJet_partonFlavour[index_CloseFar[1]])==21) ? goodJetCvL[index_CloseFar[1]]: -1.", "name": "jetFar_CvLGluon", "title": "Jet Far; AK4 btagDeepCvL Far -- gluon (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
-            "jetClose_Scale": {"def": "goodJetPt[index_CloseFar[0]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[0]]]", "name": "jetClose_Scale", "title": "Jet Close; AK4 pt / AK4 Gen pt Close; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetFar_Scale": {"def": "goodJetPt[index_CloseFar[1]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[1]]]", "name": "jetFar_Scale", "title": "Jet Far; AK4 pt / AK4 Gen pt Far; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetClose_cRegCorrScale": {"def": "goodJetPt[index_CloseFar[0]]*Jet_cRegCorr[goodJets][index_CloseFar[0]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[0]]]", "name": "jetClose_cRegCorrScale", "title": "Jet Close; AK4 pt * cRegCorr / AK4 Gen pt Close; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
-            "jetFar_cRegCorrScale": {"def": "goodJetPt[index_CloseFar[1]]*Jet_cRegCorr[goodJets][index_CloseFar[1]]/GenJet_pt[Jet_genJetIdx[goodJets][index_CloseFar[1]]]", "name": "jetFar_cRegCorrScale", "title": "Jet Far; AK4 pt * cRegCorr / AK4 Gen pt Far; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0}
+            "jetClose_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_Close])", "name": "jetClose_partonFlavour", "title": "Jet Close; AK4 partonFlavour Close; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},   
+            "jetFar_partonFlavour": {"def": "abs(goodJet_partonFlavour[index_Far])", "name": "jetFar_partonFlavour", "title": "Jet Far; AK4 partonFlavour Far; N_{Events}", "bin": 50, "xmin": -0.5, "xmax": 49.5},
+            "jetFar_ptCharm": {"def": "(abs(goodJet_partonFlavour[index_Far])==4) ? Jet_cRegCorr[goodJets][index_Far] * goodJetPt[index_Far]: -1.", "name": "jetFar_ptCharm", "title": "Jet Far; AK4 pt Far (charm)(GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFar_ptGluon": {"def": "(abs(goodJet_partonFlavour[index_Far])==21) ? Jet_cRegCorr[goodJets][index_Far] * goodJetPt[index_Far]: -1.", "name": "jetFar_ptGluon", "title": "Jet Far; AK4 pt Far (gluon) (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 100.0},
+            "jetFar_CvLCharm": {"def": "(abs(goodJet_partonFlavour[index_Far])==4) ? goodJetCvL[index_Far]: -1.", "name": "jetFar_CvLCharm", "title": "Jet Far; AK4 btagDeepCvL Far -- charm (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetFar_CvLGluon": {"def": "(abs(goodJet_partonFlavour[index_Far])==21) ? goodJetCvL[index_Far]: -1.", "name": "jetFar_CvLGluon", "title": "Jet Far; AK4 btagDeepCvL Far -- gluon (GeV); N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
+            "jetClose_Scale": {"def": "goodJetPt[index_Close]/GenJet_pt[Jet_genJetIdx[goodJets][index_Close]]", "name": "jetClose_Scale", "title": "Jet Close; AK4 pt / AK4 Gen pt Close; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFar_Scale": {"def": "goodJetPt[index_Far]/GenJet_pt[Jet_genJetIdx[goodJets][index_Far]]", "name": "jetFar_Scale", "title": "Jet Far; AK4 pt / AK4 Gen pt Far; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetClose_cRegCorrScale": {"def": "goodJetPt[index_Close]*Jet_cRegCorr[goodJets][index_Close]/GenJet_pt[Jet_genJetIdx[goodJets][index_Close]]", "name": "jetClose_cRegCorrScale", "title": "Jet Close; AK4 pt * cRegCorr / AK4 Gen pt Close; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
+            "jetFar_cRegCorrScale": {"def": "goodJetPt[index_Far]*Jet_cRegCorr[goodJets][index_Far]/GenJet_pt[Jet_genJetIdx[goodJets][index_Far]]", "name": "jetFar_cRegCorrScale", "title": "Jet Far; AK4 pt * cRegCorr / AK4 Gen pt Far; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0}
         },
         "muon_jet_matching":
         {
@@ -151,11 +161,12 @@
         },
         "vertex":
         {
-            "PV_npvsGood": {"def": "", "name": "PV_npvsGood", "title": "PV_npvsGood", "bin": 60, "xmin": 0.0, "xmax": 60.0}
+            "PV_npvsGood": {"def": "", "name": "PV_npvsGood", "title": "PV_npvsGood", "bin": 60, "xmin": 0.0, "xmax": 60.0},
+            "filter_PV_npvsGood": {"filter": "(PV_npvsGood > 0)", "description": "One good PV"}
         },
         "higgs":
         {
-            "higgs_mass_corr": {"def": "Minv3massiveCorr(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jet_cRegCorr[goodJets], Jet_muonIdx1[goodJets][index_CloseFar[0]], Jet_muonIdx2[goodJets][index_CloseFar[0]], Muon_pt, Muon_eta, Muon_phi, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass, index_CloseFar[0])",
+            "higgs_mass_corr": {"def": "Minv3massiveCorr(goodJetPt, goodJetEta, goodJetPhi, goodJetMass, Jet_cRegCorr[goodJets], Jet_muonIdx1[goodJets][index_Close], Jet_muonIdx2[goodJets][index_Close], Muon_pt, Muon_eta, Muon_phi, Jpsi_kin_pt, Jpsi_kin_eta, Jpsi_kin_phi, Jpsi_kin_mass, index_Close)",
                                 "name": "higgs_mass_corr", "title": "Higgs mass computed with the Minv3massiveCorr function", "bin": 250, "xmin": 0.0, "xmax": 250.0}
         },
         "gen":
