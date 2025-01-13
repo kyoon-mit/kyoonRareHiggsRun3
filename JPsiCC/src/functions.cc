@@ -995,7 +995,24 @@ stdVec_i jetCloseFar(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet
   idx[1] = (indexClose==1) ? 0 : 1 ;
 
   return idx;
+}
 
+float buildCloseJets(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet_phi, const Vec_f& jet_m,
+		     const Vec_f& jpsi_pt, const Vec_f& jpsi_eta, const Vec_f& jpsi_phi, const Vec_f& jpsi_m,
+		     const unsigned int idx_close, unsigned int var) {
+
+  // one shoult not subtract the jpsi but ideally simple the mu1 - mu2 w/o any correction due to the kin-fit or the various calibrations.
+  PtEtaPhiMVector p4_Close(jet_pt[idx_close], jet_eta[idx_close], jet_phi[idx_close], jet_m[idx_close]);
+  PtEtaPhiMVector p4_jpsi(jpsi_pt[0], jpsi_eta[0], jpsi_phi[0], jpsi_m[0]);
+
+  PtEtaPhiMVector newJet = p4_Close-p4_jpsi;
+  float theVar = 0;
+  if     (var == 0) theVar = newJet.Pt();
+  else if(var == 1) theVar = newJet.Eta();
+  else if(var == 2) theVar = newJet.Phi();
+  else if(var == 3) theVar = newJet.M();
+
+  return theVar;
 }
 
 stdVec_i jetCvLIndex(const Vec_f& jet_cvl) {
@@ -1004,7 +1021,6 @@ stdVec_i jetCvLIndex(const Vec_f& jet_cvl) {
   int index_sublead_cvl = -1;
   float lead_cvl = 0;
   float sublead_cvl = 0;
-  std::cout << jet_cvl.size() << std::endl;
   for (unsigned int idx = 0; idx < jet_cvl.size(); ++idx) {
     if (lead_cvl < jet_cvl[idx]) {
       lead_cvl = jet_cvl[idx];
@@ -1021,7 +1037,6 @@ stdVec_i jetCvLIndex(const Vec_f& jet_cvl) {
   idx[1] = index_sublead_cvl ;
 
   return idx;
-
 }
 
 float Minv3massiveCorr(const Vec_f& jet_pt, const Vec_f& jet_eta, const Vec_f& jet_phi, const Vec_f& jet_m,
@@ -1102,7 +1117,6 @@ PtEtaPhiMVector JpsiFromBestMuons(const Vec_f& muon_pt, const Vec_f& muon_eta, c
 
 bool CheckMuonJetMuonMatch(float muon1_pt, float muon1_eta, float muon1_phi,
                            const Vec_f& muon_pt, const Vec_f& muon_eta, const Vec_f& muon_phi, const int& jet_muonIdx) {
-  std::cout << muon_pt.size() << " " << muon_eta.size() << " " << muon_phi.size() << std::endl;
   if (muon_pt.size() < 1) {return false;}
   float dR = deltaR(muon1_eta, muon1_phi, muon_eta[jet_muonIdx], muon_phi[jet_muonIdx]);
   float dpt = abs(muon1_pt - muon_pt[jet_muonIdx]);
