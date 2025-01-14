@@ -202,27 +202,35 @@ def rdf_def_weights(rdf_runs, rdf_events, branches=[], cut_flow_dict={}, data=Fa
     '''
     hash = datetime.now().strftime("%H%M%S%f")
     if not data:
-        sample_col =rdf_events.Take['string']('sample')
+        sample_col = rdf_events.Take['string']('sample')
         sample_names = list(set(sample_col.GetValue()))
         list_sum_weights = []
         for sname in sample_names:
+            sname = sname.decode('UTF-8') if isinstance(sname, bytes) else str(sname)
+            if not isinstance(sname, str):
+                raise TypeError(f'Sample name {sname} is not a string.')
             list_sum_weights.append((sname, compute_sum_weights(rdf_runs, sname)))
-        func_sum_weights = f'float func_sum_weights_{hash}(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {{\n'
+        # func_sum_weights = f'float func_sum_weights_{hash}(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {{\n'
+        func_sum_weights = f'float func_sum_weights_{hash}(std::string sample) {{\n'
         max_idx = len(list_sum_weights)
         for idx in range(max_idx):
-            item = list_sum_weights[idx]
+            item = list_sum_weights[idx] # [(sample name, (gen_event_sumw, gen_event_count)), ...]
             if idx == 0:
-                func_sum_weights += f'  if (id.Contains("{item[0]}")) {{return {item[1][0]};}}\n'
+                func_sum_weights += '  if'
             else:
-                func_sum_weights += f'  else if (id.Contains("{item[0]}")) {{return {item[1][0]};}}\n'
-        func_sum_weights += f'  else {{return 1.;}}\n}}'
+                func_sum_weights += '  else if'
+            # func_sum_weights += f'(id.Contains("{item[0]}")) {{return {item[1][0]};}}\n'
+            func_sum_weights += f'(sample=="{item[0]}") {{return {item[1][0]};}}\n'
+        func_sum_weights += f'  else {{return 1;}}\n}}'
         weight_exp = 'xsec*genWeight*lumi/sum_weights'
     else:
         weight_exp = '1.0'
-        func_sum_weights = f'float func_sum_weights_{hash}(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {{return 1.;}}'
+        # func_sum_weights = f'float func_sum_weights_{hash}(unsigned int slot, const ROOT::RDF::RSampleInfo &id) {{return 1.;}}'
+        func_sum_weights = f'float func_sum_weights_{hash}(std::string sample) {{return 1.;}}'
     ROOT.gInterpreter.Declare(func_sum_weights)
-    new_rdf = (rdf_events.DefinePerSample('sum_weights', f'func_sum_weights_{hash}(rdfslot_, rdfsampleinfo_)')
-                        .Define('w', weight_exp)
+    # new_rdf = (rdf_events.DefinePerSample('sum_weights', f'func_sum_weights_{hash}(rdfslot_, rdfsampleinfo_)')
+    new_rdf = (rdf_events.Define('sum_weights', f'func_sum_weights_{hash}(sample)')
+                         .Define('w', weight_exp)
     )
     cut_flow_dict = add_cut_flow(cut_flow_dict, 'w', new_rdf.Sum('w').GetValue())
     branches += ['sum_weights', 'w']
