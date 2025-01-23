@@ -4,7 +4,8 @@ from jpsicc import limits
 def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
                    samp_dict, var_min, var_max, SR_low, SR_high, suffix='',
                    sig_pdf_type='', bkg_pdf_type='', mean_low=None, mean_high=None,
-                   sigma_low=None, sigma_high=None, step_low=None, step_high=None, step_val=None):
+                   sigma_low=None, sigma_high=None, step_low=None, step_high=None,
+                   step_val=None, vals_from_file=''):
     '''Fit signal and background individually and save to a workspace. Plots are created.
 
     Args:
@@ -70,12 +71,12 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
             val['pdf_type'] = sig_pdf_type
         elif bkg_pdf_type and val['bkg_or_sig']=='bkg':
             val['pdf_type'] = bkg_pdf_type
-        if val['bkg_or_sig']=='bkg': mean_low, mean_high = 105, 115
         rwc.addDataHist(SAMP=val['SAMP'], filename=val['filename'], treename=val['treename'], var_name='m_mumucc', col_name=val['col_name'], nbins=nbins, weight_name='w')
         if '_X_' in val['pdf_type']:
             rwc.addPDFTurnOn(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=val['strategy'],
                             mean_low=mean_low, mean_high=mean_high, sigma_low=sigma_low, sigma_high=sigma_high,
-                            step_low=step_low, step_high=step_high, step_val=step_val)
+                            step_low=step_low, step_high=step_high, step_val=step_val,
+                            vals_from_file=vals_from_file)
         else:
             rwc.addPDF(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=val['strategy'],
                     mean_low=mean_low, mean_high=mean_high, sigma_low=sigma_low, sigma_high=sigma_high,
@@ -93,10 +94,12 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
 if __name__=='__main__':
     # snapshot_dir = '/work/submit/mariadlf/Hrare_JPsiCC/OCT25/'
     snapshot_dir = '/ceph/submit/data/user/k/kyoon/snapshots/mariadlf_Hrare_JPsiCC_20241025'
-    bkg_list = ['gaussian_X_step_bernstein_3rd_order',
-                'gaussian_X_step_bernstein_4th_order']
+    bkg_list = [('gaussian_X_step_bernstein_3rd_order', 'workspace_2018_GF_v202410_ROOT_6_33_01_20250123_WEIGHT_bernstein_3rd_order_m_mumucc_100_160.root'),
+                ('gaussian_X_step_bernstein_4th_order', 'workspace_2018_GF_v202410_ROOT_6_33_01_20250123_WEIGHT_bernstein_4th_order_m_mumucc_100_160.root'),
+                ('gaussian_X_step_bernstein_5th_order', 'workspace_2018_GF_v202410_ROOT_6_33_01_20250123_WEIGHT_bernstein_5th_order_m_mumucc_100_160.root')]
     # bkg_list = ['bernstein_3rd_order',
-    #             'bernstein_4th_order']
+    #             'bernstein_4th_order',
+    #             'bernstein_5th_order']
     sig_list = ['crystal_ball']
     
     for bkg in bkg_list:
@@ -108,7 +111,7 @@ if __name__=='__main__':
             'col_name': 'massHiggsCorr',
             'bkg_or_sig': 'bkg',
             'decay_mother': 'both',
-            'pdf_type': bkg,
+            'pdf_type': bkg[0],
             'strategy': 1}
         # samp_dict['bkg_JpsiToMuMu'] =\
         #     {'SAMP': 'MC_BKG_JpsiToMuMu',
@@ -129,11 +132,12 @@ if __name__=='__main__':
         #     'pdf_type': bkg,
         #     'strategy': 2}
         samp_dict_Z = samp_dict
-        fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True, suffix=bkg,
-                        samp_dict=samp_dict, var_min=100, var_max=160, SR_low=100, SR_high=160,
-                        mean_low=80, mean_high=115, sigma_low=10, sigma_high=60,
-                        step_low=95, step_high=105, step_val=100)
-        # fitSigBkgIndiv(2018, '202410', 'Z', 'ROOT_6_33_01', weights=True,
+        fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True,
+                       suffix=bkg[0], vals_from_file=bkg[1],
+                       samp_dict=samp_dict, var_min=55, var_max=160, SR_low=55, SR_high=160,
+                       mean_low=-20., mean_high=20., sigma_low=0., sigma_high=20.,
+                       step_low=60., step_high=90., step_val=95)
+        # fitSigBkgIndi(2018, '202410', 'Z', 'ROOT_6_33_01', weights=True,
         #             samp_dict=samp_dict_Z, var_min=55, var_max=160, SR_low=55, SR_high=120)
 
     # for sig in sig_list:

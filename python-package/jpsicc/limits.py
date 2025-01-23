@@ -70,13 +70,17 @@ class RooWorkspaceCreator:
         wfile.Close()
         return
 
-    def __readFromWorkspace(self, obj_name: str, obj_type: str):
+    def __readFromWorkspace(self, obj_name: str, obj_type: str, file_name='', w_name=''):
         '''Internal method for reading an object from the workspace.
 
         Args:
             obj_name (str): The name of the object to read.
             obj_type (str): The type of the object to read. The options are:
                 'var', 'pdf', or 'data'.
+            file_name (str, optional): If provided, it will use that value.
+                Defaults to self._wfilename
+            w_name (str, optional): If provided, it will use that value.
+                Defaults to self._wname
 
         Returns:
             object (ROOT.RooRealVar, ROOT.RooAbsPdf, or ROOT.RooAbsData): The object.
@@ -85,8 +89,10 @@ class RooWorkspaceCreator:
             ValueError: If obj_type is not one of the following:
                 'var', 'pdf', or 'data'.
         '''
-        wfile = ROOT.TFile.Open(self._wfilename, 'UPDATE')
-        w = wfile.Get(self._wname)
+        if not file_name: file_name = self._wfilename
+        if not w_name: w_name = self._wname
+        wfile = ROOT.TFile.Open(file_name, 'UPDATE')
+        w = wfile.Get(w_name)
         if obj_type=='var':
             obj = w.var(obj_name)
         elif obj_type=='pdf':
@@ -408,9 +414,9 @@ class RooWorkspaceCreator:
         self.__importToWorkspace(pdf)
         return
 
-    def addPDFTurnOn(self, SAMP: str, pdf_type: str, var_name: str, max_tries=15, strategy=1,
+    def addPDFTurnOn(self, SAMP: str, pdf_type: str, var_name: str, max_tries=10, strategy=1,
             binned=True, mean_low=None, mean_high=None, sigma_low=None, sigma_high=None,
-            step_low=None, step_high=None, step_val=None):
+            step_low=None, step_high=None, step_val=None, vals_from_file=''):
         '''Add turnon PDF to the workspace.
 
         The turnon PDF type is specified. The turnon PDF is fitted to the existing data.
@@ -437,6 +443,10 @@ class RooWorkspaceCreator:
                 Defaults to self._SR_high.
             step_val (float, optional): Specifies the value of the turnon.
                 Defaults to (self._SR_high-self._SR_low)/2.
+            vals_from_file (str, optional): If .ROOT file name is given, the
+                values of the polynomial coefficients will be read from the file.
+                It will assume that the file has the same structure and variable names.
+                Defaults to ''.
 
         Returns:
 
@@ -444,7 +454,7 @@ class RooWorkspaceCreator:
             ValueError: If pdf_type does not match an existing option.
             ImportError: If libHiggsAnalysisCombinedLimit.so does not exist.
         '''
-        if mean_low is None: mean_low = self._SR_low
+        if mean_low is None: mean_low = 0
         if mean_high is None: mean_high = self._SR_high
         if sigma_low is None: sigma_low = self._SR_low
         if sigma_high is None: sigma_high = self._SR_high
@@ -452,83 +462,136 @@ class RooWorkspaceCreator:
         if step_high is None: step_high = self._SR_high
         if step_val is None: step_val = (self._SR_high-self._SR_low)/2
         var = self.__readFromWorkspace(var_name, 'var')
-        var.setRange('pre_fit', step_val, var.getMax())
         if pdf_type=='gaussian_X_step_bernstein_3rd_order':
+            if vals_from_file:
+                bern3_c0 = self.__readFromWorkspace('bern3_c0', 'var', file_name=vals_from_file)
+                bern3_c1 = self.__readFromWorkspace('bern3_c1', 'var', file_name=vals_from_file)
+                bern3_c2 = self.__readFromWorkspace('bern3_c2', 'var', file_name=vals_from_file)
+                bern3_c3 = self.__readFromWorkspace('bern3_c3', 'var', file_name=vals_from_file)
+                bern3_c0.setConstant()
+                bern3_c1.setConstant()
+                bern3_c2.setConstant()
+                bern3_c3.setConstant()
+            else:
+                bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.6, .1, 1.)
+                bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.6, .01, 1.)
+                bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.6, .01, 1.)
+                bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.6, .01, 1.)
             mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
             sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
-            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
-            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.2, 0., 1.)
-            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.2, 0., 1.)
-            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.2, 0., 1.)
-            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', step_low, step_high)
             pre_pdf = ROOT.RooBernstein(f'{SAMP}_pre_bern3', f'{SAMP}_pre_bern3', var,
                                         ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
             pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
                                              var, mu, sigma, turnon,
                                              ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
         elif pdf_type=='gaussian_X_step_bernstein_4th_order':
+            if vals_from_file:
+                bern4_c0 = self.__readFromWorkspace('bern4_c0', 'var', file_name=vals_from_file)
+                bern4_c1 = self.__readFromWorkspace('bern4_c1', 'var', file_name=vals_from_file)
+                bern4_c2 = self.__readFromWorkspace('bern4_c2', 'var', file_name=vals_from_file)
+                bern4_c3 = self.__readFromWorkspace('bern4_c3', 'var', file_name=vals_from_file)
+                bern4_c4 = self.__readFromWorkspace('bern4_c4', 'var', file_name=vals_from_file)
+                bern4_c0.setConstant()
+                bern4_c1.setConstant()
+                bern4_c2.setConstant()
+                bern4_c3.setConstant()
+                bern4_c4.setConstant()
+            else:
+                bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.5, .1, 1.)
+                bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.5, .01, 1.)
+                bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.4, .01, 1.)
+                bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.3, .01, 1.)
+                bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.2, .01, 1.)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', step_low, step_high)
             mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
             sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
-            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.3, 0., 1.)
-            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.3, 0., 1.)
-            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.3, 0., 1.)
-            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.5, 0., 1.)
-            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.5, 0., 1.)
-            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
             pre_pdf = ROOT.RooBernstein(f'{SAMP}_pre_bern4', f'{SAMP}_pre_bern4', var,
                                         ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
             pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
                                              var, mu, sigma, turnon,
                                              ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+        elif pdf_type=='gaussian_X_step_bernstein_5th_order':
+            if vals_from_file:
+                bern5_c0 = self.__readFromWorkspace('bern5_c0', 'var', file_name=vals_from_file)
+                bern5_c1 = self.__readFromWorkspace('bern5_c1', 'var', file_name=vals_from_file)
+                bern5_c2 = self.__readFromWorkspace('bern5_c2', 'var', file_name=vals_from_file)
+                bern5_c3 = self.__readFromWorkspace('bern5_c3', 'var', file_name=vals_from_file)
+                bern5_c4 = self.__readFromWorkspace('bern5_c4', 'var', file_name=vals_from_file)
+                bern5_c5 = self.__readFromWorkspace('bern5_c5', 'var', file_name=vals_from_file)
+                bern5_c0.setConstant()
+                bern5_c1.setConstant()
+                bern5_c2.setConstant()
+                bern5_c3.setConstant()
+                bern5_c4.setConstant()
+                bern5_c5.setConstant()
+            else:
+                bern5_c0 = ROOT.RooRealVar('bern5_c0', 'bern5_c0', 0.5, .1, 1.)
+                bern5_c1 = ROOT.RooRealVar('bern5_c1', 'bern5_c1', 0.5, .01, 1.)
+                bern5_c2 = ROOT.RooRealVar('bern5_c2', 'bern5_c2', 0.4, .01, 1.)
+                bern5_c3 = ROOT.RooRealVar('bern5_c3', 'bern5_c3', 0.3, .01, 1.)
+                bern5_c4 = ROOT.RooRealVar('bern5_c4', 'bern5_c4', 0.2, .01, 1.)
+                bern5_c5 = ROOT.RooRealVar('bern5_c5', 'bern5_c5', 0.2, .01, 1.)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', step_low, step_high)
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
+            pre_pdf = ROOT.RooBernstein(f'{SAMP}_pre_bern5', f'{SAMP}_pre_bern5', var,
+                                        ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
+            pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
+                                             var, mu, sigma, turnon,
+                                             ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
         else:
             raise ValueError('Invalid pdf_type.')
         data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
         data = self.__readFromWorkspace(data_name, 'data')
         ###
-        pre_params = pre_pdf.getParameters(0)
-        pre_status = -1
-        print('{}Performing likelihood pre-fit of {} to {} with range [{:.1f}, {:.1f}].{}'.format('\033[1;36m', pre_pdf.GetTitle(), data.GetTitle(), step_val, var.getMax(), '\033[0m'))
-        for ntries in range(1, max_tries+1):
-            print ('{}kytools: Pre-fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
-            fit_result = pre_pdf.fitTo(data,
-                                    ROOT.RooFit.Save(True),
-                                    ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
-                                    ROOT.RooFit.Strategy(strategy),
-                                    ROOT.RooFit.PrintLevel(-1),
-                                    ROOT.RooFit.Warnings(False),
-                                    ROOT.RooFit.PrintEvalErrors(-1),
-                                    ROOT.RooFit.SumW2Error(True),
-                                    ROOT.RooFit.Range('pre_fit'))
-            pre_status = fit_result.status()
-            if (pre_status != 0):                                                                                                                              
-                pre_params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
-                ntries += 1
+        if not vals_from_file: # probably better to define this loop as a function
+            pre_params = pre_pdf.getParameters(0)
+            pre_status = -1
+            var.setRange('pre_fit', step_val, var.getMax())
+            print('{}Performing likelihood pre-fit of {} to {} with range [{:.1f}, {:.1f}].{}'.format('\033[1;36m', pre_pdf.GetTitle(), data.GetTitle(), step_val, var.getMax(), '\033[0m'))
+            for ntries in range(1, max_tries+1):
+                print ('{}kytools: Pre-fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
+                fit_result = pre_pdf.fitTo(data,
+                                        ROOT.RooFit.Save(True),
+                                        ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
+                                        ROOT.RooFit.Strategy(strategy),
+                                        ROOT.RooFit.PrintLevel(-1),
+                                        ROOT.RooFit.Warnings(False),
+                                        ROOT.RooFit.PrintEvalErrors(-1),
+                                        ROOT.RooFit.SumW2Error(True),
+                                        ROOT.RooFit.Range('pre_fit'))
+                pre_status = fit_result.status()
+                if (pre_status != 0):                                                                                                                              
+                    pre_params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
+                    ntries += 1
+                else:
+                    break
+            print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', pre_status, '\033[0m'))
+            if pre_status==0:
+                print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+            elif pre_status==1:
+                print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+            elif pre_status==2:
+                print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+            elif pre_status==3:
+                print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+            elif pre_status==4:
+                print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+            elif pre_status==5:
+                print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
             else:
-                break
-        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', pre_status, '\033[0m'))
-        if pre_status==0:
-            print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
-        elif pre_status==1:
-            print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
-        elif pre_status==2:
-            print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
-        elif pre_status==3:
-            print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
-        elif pre_status==4:
-            print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
-        elif pre_status==5:
-            print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
-        else:
-            print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
-        print('======== Pre-fit Result ========')
-        for pre_p in pre_params:
-            pre_p.Print()
-            pre_p.setConstant()
-        print('================================')
+                print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+            print('======== Pre-fit Result ========')
+            for pre_p in pre_params:
+                pre_p.Print()
+                pre_p.setConstant()
+            print('================================')
         ###
+        var.setRange('full', var.getMin(), var.getMax())
         params = pdf.getParameters(0)
         status = -1
-        print('{}Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
+        print('{}Performing likelihood fit of {} to {} with range [{:.1f}, {:.1f}].{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), var.getMin(), var.getMax(), '\033[0m'))
         for ntries in range(1, max_tries+1):
             print ('{}kytools: Fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
             fit_result = pdf.fitTo(data,
@@ -538,7 +601,8 @@ class RooWorkspaceCreator:
                                     ROOT.RooFit.PrintLevel(-1),
                                     ROOT.RooFit.Warnings(False),
                                     ROOT.RooFit.PrintEvalErrors(-1),
-                                    ROOT.RooFit.SumW2Error(True))
+                                    ROOT.RooFit.SumW2Error(True),
+                                    ROOT.RooFit.Range('full'))
             status = fit_result.status()
             if (status != 0):                                                                                                                              
                 params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
