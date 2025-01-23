@@ -4,7 +4,7 @@ from jpsicc import limits
 def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
                    samp_dict, var_min, var_max, SR_low, SR_high, suffix='',
                    sig_pdf_type='', bkg_pdf_type='', mean_low=None, mean_high=None,
-                   sigma_low=None, sigma_high=None, step_low=None, step_high=None):
+                   sigma_low=None, sigma_high=None, step_low=None, step_high=None, step_val=None):
     '''Fit signal and background individually and save to a workspace. Plots are created.
 
     Args:
@@ -35,16 +35,18 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
             Defaults to ''.
         mean_low (float, optional): Lower range of the mean.
                 Defaults to SR_low.
-            mean_high (float, optional): Upper range of the mean.
-                Defaults to SR_high.
-            sigma_low (float, optional): Lower range of the Gaussian sigma.
-                Defaults to SR_low.
-            sigma_high (float, optional): Upper range of the Gaussian sigma.
-                Defaults to SR_high.
-            step_low (float, optional): Lower range of the turnon.
-                Defaults to SR_low.
-            step_high (float, optional): Upper range of the turnon.
-                Defaults to SR_high.
+        mean_high (float, optional): Upper range of the mean.
+            Defaults to SR_high.
+        sigma_low (float, optional): Lower range of the Gaussian sigma.
+            Defaults to SR_low.
+        sigma_high (float, optional): Upper range of the Gaussian sigma.
+            Defaults to SR_high.
+        step_low (float, optional): Lower range of the turnon.
+            Defaults to SR_low.
+        step_high (float, optional): Upper range of the turnon.
+            Defaults to SR_high.
+        step_val (float, optional): Specifies the value of the turnon.
+                Defaults to (self._SR_high-self._SR_low)/2.
 
     Returns:
         (None)
@@ -58,6 +60,7 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
     if sigma_high is None: sigma_high = SR_high
     if step_low is None: step_low = SR_low
     if step_high is None: step_high = SR_high
+    if step_val is None: step_val = (SR_high-SR_low)/2
     nbins = int(var_max - var_min)
     rwc = limits.RooWorkspaceCreator(YEAR, VERS, CAT, CMSSW, weights, suffix=f'{suffix}_m_mumucc_{var_min:.0f}_{var_max:.0f}')
     rwc.addVar(var_name='m_mumucc', var_title='m_{#mu^{+}#mu^{-}c#bar{c}}', value=125, var_min=var_min, var_max=var_max, unit='GeV/c^{2}')
@@ -69,9 +72,14 @@ def fitSigBkgIndiv(YEAR, VERS, CAT, CMSSW, weights,
             val['pdf_type'] = bkg_pdf_type
         if val['bkg_or_sig']=='bkg': mean_low, mean_high = 105, 115
         rwc.addDataHist(SAMP=val['SAMP'], filename=val['filename'], treename=val['treename'], var_name='m_mumucc', col_name=val['col_name'], nbins=nbins, weight_name='w')
-        rwc.addPDF(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=val['strategy'],
-                   mean_low=mean_low, mean_high=mean_high, sigma_low=sigma_low, sigma_high=sigma_high,
-                   step_low=step_low, step_high=step_high)
+        if '_X_' in val['pdf_type']:
+            rwc.addPDFTurnOn(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=val['strategy'],
+                            mean_low=mean_low, mean_high=mean_high, sigma_low=sigma_low, sigma_high=sigma_high,
+                            step_low=step_low, step_high=step_high, step_val=step_val)
+        else:
+            rwc.addPDF(SAMP=val['SAMP'], pdf_type=val['pdf_type'], var_name='m_mumucc', strategy=val['strategy'],
+                    mean_low=mean_low, mean_high=mean_high, sigma_low=sigma_low, sigma_high=sigma_high,
+                    step_low=step_low, step_high=step_high)
     for decay_mother in ('H', 'Z'):
         var_savename = f'm{decay_mother}'
         for val in samp_dict.values():
@@ -87,7 +95,8 @@ if __name__=='__main__':
     snapshot_dir = '/ceph/submit/data/user/k/kyoon/snapshots/mariadlf_Hrare_JPsiCC_20241025'
     bkg_list = ['gaussian_X_step_bernstein_3rd_order',
                 'gaussian_X_step_bernstein_4th_order']
-    # bkg_list = ['bernstein_4th_order']
+    # bkg_list = ['bernstein_3rd_order',
+    #             'bernstein_4th_order']
     sig_list = ['crystal_ball']
     
     for bkg in bkg_list:
@@ -100,7 +109,7 @@ if __name__=='__main__':
             'bkg_or_sig': 'bkg',
             'decay_mother': 'both',
             'pdf_type': bkg,
-            'strategy': 2}
+            'strategy': 1}
         # samp_dict['bkg_JpsiToMuMu'] =\
         #     {'SAMP': 'MC_BKG_JpsiToMuMu',
         #     'filename': os.path.join(snapshot_dir, 'snapshotJpsiCC_10_2018.root'),
@@ -121,9 +130,9 @@ if __name__=='__main__':
         #     'strategy': 2}
         samp_dict_Z = samp_dict
         fitSigBkgIndiv(2018, '202410', 'GF', 'ROOT_6_33_01', weights=True, suffix=bkg,
-                        samp_dict=samp_dict, var_min=55, var_max=160, SR_low=55, SR_high=160,
-                        mean_low=85, mean_high=115, sigma_low=10, sigma_high=60,
-                        step_low=95, step_high=105)
+                        samp_dict=samp_dict, var_min=100, var_max=160, SR_low=100, SR_high=160,
+                        mean_low=80, mean_high=115, sigma_low=10, sigma_high=60,
+                        step_low=95, step_high=105, step_val=100)
         # fitSigBkgIndiv(2018, '202410', 'Z', 'ROOT_6_33_01', weights=True,
         #             samp_dict=samp_dict_Z, var_min=55, var_max=160, SR_low=55, SR_high=120)
 

@@ -185,7 +185,6 @@ class RooWorkspaceCreator:
     def defineRegions(self, SR_low: float, SR_high: float, CR_low: float, CR_high: float):
         '''Define signal and control regions for the key observable.
         TODO: make regions in workspace.
-
         Args:
             SR_low (int or float): Lower bound of the signal region.
             SR_high (int or float): Upper bound of the signal region.
@@ -212,8 +211,8 @@ class RooWorkspaceCreator:
         return
 
     def addPDF(self, SAMP: str, pdf_type: str, var_name: str, max_tries=12, strategy=1,
-               binned=True, mean_low=None, mean_high=None, sigma_low=None, sigma_high=None,
-               step_low=None, step_high=None):
+            binned=True, mean_low=None, mean_high=None, sigma_low=None, sigma_high=None,
+            step_low=None, step_high=None):
         '''Add PDF to the workspace.
 
         The PDF type is specified. The PDF is fitted to the existing data.
@@ -315,56 +314,6 @@ class RooWorkspaceCreator:
             pdf = ROOT.RooAddPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
                                  ROOT.RooArgList(exp1_pdf, exp2_pdf),
                                  ROOT.RooArgList(c_exp1, c_exp2))
-        elif pdf_type=='gaussian_X_exponential': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 0.1, 15)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            expX_pow = ROOT.RooRealVar('expX_pow', 'expX_pow', -0.1, -10., 0.)
-            expX_pdf = ROOT.RooExponential(f'{SAMP}_expX', f'{SAMP}_expX', var, expX_pow)
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, expX_pdf, gaussX_pdf)
-        elif pdf_type=='gaussian_X_step_exponential': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            expX_pow = ROOT.RooRealVar('expX_pow', 'expX_pow', -0.1, -10., 0.)
-            expX_pdf = ROOT.RooExponential(f'{SAMP}_expX', f'{SAMP}_expX', var, expX_pow)
-            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
-            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
-            step_expX_pdf = ROOT.RooProdPdf(f'{SAMP}_step_expX', f'{SAMP}_step_expX', ROOT.RooArgList(step_pdf, expX_pdf))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_expX_pdf, gaussX_pdf)
-        elif pdf_type=='gaussian_X_double_exponential':
-            exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
-            exp2_pow = ROOT.RooRealVar('exp2_pow', 'exp2_pow', -0.01, -10., 0.)
-            exp1_pdf = ROOT.RooExponential(f'{SAMP}_exp1', f'{SAMP}_{pdf_type}', var, exp1_pow)
-            exp2_pdf = ROOT.RooExponential(f'{SAMP}_exp2', f'{SAMP}_{pdf_type}', var, exp2_pow)
-            c_exp1 = ROOT.RooRealVar('c_exp1', 'c_exp1', 0., 1.)
-            c_exp2 = ROOT.RooRealVar('c_exp2', 'c_exp2', 0., 1.)
-            double_expX_pdf = ROOT.RooAddPdf(f'{SAMP}_double_expX', f'{SAMP}_double_expX',
-                                             ROOT.RooArgList(exp1_pdf, exp2_pdf),
-                                             ROOT.RooArgList(c_exp1, c_exp2),
-                                             False)
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, double_expX_pdf, gaussX_pdf)
-        elif pdf_type=='gaussian_X_step_double_exponential':
-            exp1_pow = ROOT.RooRealVar('exp1_pow', 'exp1_pow', -0.1, -10., 0.)
-            exp2_pow = ROOT.RooRealVar('exp2_pow', 'exp2_pow', -0.01, -10., 0.)
-            exp1_pdf = ROOT.RooExponential(f'{SAMP}_exp1', f'{SAMP}_{pdf_type}', var, exp1_pow)
-            exp2_pdf = ROOT.RooExponential(f'{SAMP}_exp2', f'{SAMP}_{pdf_type}', var, exp2_pow)
-            c_exp1 = ROOT.RooRealVar('c_exp1', 'c_exp1', 0., 1.)
-            c_exp2 = ROOT.RooRealVar('c_exp2', 'c_exp2', 0., 1.)
-            double_expX_pdf = ROOT.RooAddPdf(f'{SAMP}_double_expX', f'{SAMP}_double_expX',
-                                             ROOT.RooArgList(exp1_pdf, exp2_pdf),
-                                             ROOT.RooArgList(c_exp1, c_exp2),
-                                             False)
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
-            step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
-            step_double_expX_pdf = ROOT.RooProdPdf(f'{SAMP}_step_double_expX', f'{SAMP}_step_double_expX', ROOT.RooArgList(step_pdf, double_expX_pdf))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_double_expX_pdf, gaussX_pdf)
         elif pdf_type=='bernstein_0th_order':
             bern0_c0 = ROOT.RooRealVar('bern0_c0', 'bern0_c0', 0.5, 0., 1.)
             pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
@@ -404,67 +353,6 @@ class RooWorkspaceCreator:
             bern5_c5 = ROOT.RooRealVar('bern5_c5', 'bern5_c5', 0.1, 0., 1.)
             pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
                                     ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
-        elif pdf_type=='gaussian_X_bernstein_1st_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern1_c0 = ROOT.RooRealVar('bern1_c0', 'bern1_c0', 0.5, 0., 1.)
-            bern1_c1 = ROOT.RooRealVar('bern1_c1', 'bern1_c1', 0.1, 0., 1.)
-            bern1X_pdf = ROOT.RooBernstein(f'{SAMP}_bern1X', f'{SAMP}_bern1X', var,
-                                            ROOT.RooArgList(bern1_c0, bern1_c1))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern1X_pdf, gaussX_pdf)
-        elif pdf_type=='gaussian_X_bernstein_2nd_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern2_c0 = ROOT.RooRealVar('bern2_c0', 'bern2_c0', 0.5, 0., 1.)
-            bern2_c1 = ROOT.RooRealVar('bern2_c1', 'bern2_c1', 0.1, 0., 1.)
-            bern2_c2 = ROOT.RooRealVar('bern2_c2', 'bern2_c2', 0.1, 0., 1.)
-            bern2X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
-                                            ROOT.RooArgList(bern2_c0, bern2_c1, bern2_c2))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern2X_pdf, gaussX_pdf)
-        elif pdf_type=='gaussian_X_bernstein_3rd_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            # gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
-            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.1, 0., 1.)
-            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.1, 0., 1.)
-            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.1, 0., 1.)
-            # bern3X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
-            #                                 ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
-            # pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern3X_pdf, gaussX_pdf)
-
-        elif pdf_type=='gaussian_X_step_bernstein_3rd_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
-            # gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
-            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.1, 0., 1.)
-            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.1, 0., 1.)
-            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.1, 0., 1.)
-            # bern3X_pdf = ROOT.RooBernstein(f'{SAMP}_bern3X', f'{SAMP}_bern3X', var,
-            #                                 ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
-            turnon = ROOT.RooRealVar('turnon', 'turnon', step_low, step_high)
-            # step_pdf = ROOT.RooStats.Heaviside(f'{SAMP}_step', f'{SAMP}_step', var, turnon)
-            # step_bern3X_pdf = ROOT.RooProdPdf(f'{SAMP}_step_bern3X', f'{SAMP}_step_bern3X',
-            #                                   ROOT.RooArgList(step_pdf, bern3X_pdf))
-            # pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, step_bern3X_pdf, gaussX_pdf)
-            pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
-                                             var, mu, sigma, turnon,
-                                             ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
-        elif pdf_type=='gaussian_X_bernstein_4th_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.5, 0., 1.)
-            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.1, 0., 1.)
-            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.1, 0., 1.)
-            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.1, 0., 1.)
-            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.1, 0., 1.)
-            bern4X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
-                                            ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern4X_pdf, gaussX_pdf)
         elif pdf_type=='gaussian_X_step_bernstein_4th_order': # convolution
             mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
             sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
@@ -479,20 +367,6 @@ class RooWorkspaceCreator:
             pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
                                              var, mu, sigma, turnon,
                                              ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
-        elif pdf_type=='gaussian_X_bernstein_5th_order': # convolution
-            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
-            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', 30, 60)
-            gaussX_pdf = ROOT.RooGaussian(f'{SAMP}_gaussX', f'{SAMP}_gaussX', var, mu, sigma)
-            bern5_c0 = ROOT.RooRealVar('bern5_c0', 'bern5_c0', 0.5, 0., 1.)
-            bern5_c1 = ROOT.RooRealVar('bern5_c1', 'bern5_c1', 0.1, 0., 1.)
-            bern5_c2 = ROOT.RooRealVar('bern5_c2', 'bern5_c2', 0.1, 0., 1.)
-            bern5_c3 = ROOT.RooRealVar('bern5_c3', 'bern5_c3', 0.1, 0., 1.)
-            bern5_c4 = ROOT.RooRealVar('bern5_c4', 'bern5_c4', 0.1, 0., 1.)
-            bern5_c5 = ROOT.RooRealVar('bern5_c5', 'bern5_c5', 0.1, 0., 1.)
-            bern5X_pdf = ROOT.RooBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var,
-                                            ROOT.RooArgList(bern5_c0, bern5_c1, bern5_c2, bern5_c3, bern5_c4, bern5_c5))
-            pdf = ROOT.RooFFTConvPdf(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}', var, bern5X_pdf, gaussX_pdf)
-        # TODO: add laurent
         else:
             raise ValueError('Invalid pdf_type.')
         params = pdf.getParameters(0)
@@ -531,6 +405,165 @@ class RooWorkspaceCreator:
             print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
         else:
             print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        self.__importToWorkspace(pdf)
+        return
+
+    def addPDFTurnOn(self, SAMP: str, pdf_type: str, var_name: str, max_tries=15, strategy=1,
+            binned=True, mean_low=None, mean_high=None, sigma_low=None, sigma_high=None,
+            step_low=None, step_high=None, step_val=None):
+        '''Add turnon PDF to the workspace.
+
+        The turnon PDF type is specified. The turnon PDF is fitted to the existing data.
+
+        Args:
+            SAMP (str): Name of the sample.
+            pdf_type (str): PDF type, e.g. 'gaussian', 'double_gaussian', 'crytal_ball', etc.
+                See code body for exhaustive list of PDFs.
+            var_name (str): Name of the key variable in the workplace.
+            max_tries (int, optional): Max tries of fitting.
+            strategy (int, optional): Strategy of the fitting.
+            binned (bool, optional): Whether the data is binned. Defaults to True.
+            mean_low (float, optional): Lower range of the mean.
+                Defaults to self._SR_low.
+            mean_high (float, optional): Upper range of the mean.
+                Defaults to self._SR_high.
+            sigma_low (float, optional): Lower range of the Gaussian sigma.
+                Defaults to self._SR_low.
+            sigma_high (float, optional): Upper range of the Gaussian sigma.
+                Defaults to self._SR_high.
+            step_low (float, optional): Lower range of the turnon.
+                Defaults to self._SR_low.
+            step_high (float, optional): Upper range of the turnon.
+                Defaults to self._SR_high.
+            step_val (float, optional): Specifies the value of the turnon.
+                Defaults to (self._SR_high-self._SR_low)/2.
+
+        Returns:
+
+        Raises:
+            ValueError: If pdf_type does not match an existing option.
+            ImportError: If libHiggsAnalysisCombinedLimit.so does not exist.
+        '''
+        if mean_low is None: mean_low = self._SR_low
+        if mean_high is None: mean_high = self._SR_high
+        if sigma_low is None: sigma_low = self._SR_low
+        if sigma_high is None: sigma_high = self._SR_high
+        if step_low is None: step_low = self._SR_low
+        if step_high is None: step_high = self._SR_high
+        if step_val is None: step_val = (self._SR_high-self._SR_low)/2
+        var = self.__readFromWorkspace(var_name, 'var')
+        var.setRange('pre_fit', step_val, var.getMax())
+        if pdf_type=='gaussian_X_step_bernstein_3rd_order':
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
+            bern3_c0 = ROOT.RooRealVar('bern3_c0', 'bern3_c0', 0.5, 0., 1.)
+            bern3_c1 = ROOT.RooRealVar('bern3_c1', 'bern3_c1', 0.2, 0., 1.)
+            bern3_c2 = ROOT.RooRealVar('bern3_c2', 'bern3_c2', 0.2, 0., 1.)
+            bern3_c3 = ROOT.RooRealVar('bern3_c3', 'bern3_c3', 0.2, 0., 1.)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
+            pre_pdf = ROOT.RooBernstein(f'{SAMP}_pre_bern3', f'{SAMP}_pre_bern3', var,
+                                        ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
+            pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
+                                             var, mu, sigma, turnon,
+                                             ROOT.RooArgList(bern3_c0, bern3_c1, bern3_c2, bern3_c3))
+        elif pdf_type=='gaussian_X_step_bernstein_4th_order':
+            mu = ROOT.RooRealVar('gaussX_mu', 'gaussX_mu', mean_low, mean_high)
+            sigma = ROOT.RooRealVar('gaussX_sigma', 'gaussX_sigma', sigma_low, sigma_high)
+            bern4_c0 = ROOT.RooRealVar('bern4_c0', 'bern4_c0', 0.3, 0., 1.)
+            bern4_c1 = ROOT.RooRealVar('bern4_c1', 'bern4_c1', 0.3, 0., 1.)
+            bern4_c2 = ROOT.RooRealVar('bern4_c2', 'bern4_c2', 0.3, 0., 1.)
+            bern4_c3 = ROOT.RooRealVar('bern4_c3', 'bern4_c3', 0.5, 0., 1.)
+            bern4_c4 = ROOT.RooRealVar('bern4_c4', 'bern4_c4', 0.5, 0., 1.)
+            turnon = ROOT.RooRealVar('turnon', 'turnon', mean_low, mean_high)
+            pre_pdf = ROOT.RooBernstein(f'{SAMP}_pre_bern4', f'{SAMP}_pre_bern4', var,
+                                        ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+            pdf = ROOT.RooGaussStepBernstein(f'{SAMP}_{pdf_type}', f'{SAMP}_{pdf_type}',
+                                             var, mu, sigma, turnon,
+                                             ROOT.RooArgList(bern4_c0, bern4_c1, bern4_c2, bern4_c3, bern4_c4))
+        else:
+            raise ValueError('Invalid pdf_type.')
+        data_name = f'{SAMP}_{self.YEAR}_{self.CAT}_data{"hist" if binned else "set"}'
+        data = self.__readFromWorkspace(data_name, 'data')
+        ###
+        pre_params = pre_pdf.getParameters(0)
+        pre_status = -1
+        print('{}Performing likelihood pre-fit of {} to {} with range [{:.1f}, {:.1f}].{}'.format('\033[1;36m', pre_pdf.GetTitle(), data.GetTitle(), step_val, var.getMax(), '\033[0m'))
+        for ntries in range(1, max_tries+1):
+            print ('{}kytools: Pre-fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
+            fit_result = pre_pdf.fitTo(data,
+                                    ROOT.RooFit.Save(True),
+                                    ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
+                                    ROOT.RooFit.Strategy(strategy),
+                                    ROOT.RooFit.PrintLevel(-1),
+                                    ROOT.RooFit.Warnings(False),
+                                    ROOT.RooFit.PrintEvalErrors(-1),
+                                    ROOT.RooFit.SumW2Error(True),
+                                    ROOT.RooFit.Range('pre_fit'))
+            pre_status = fit_result.status()
+            if (pre_status != 0):                                                                                                                              
+                pre_params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
+                ntries += 1
+            else:
+                break
+        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', pre_status, '\033[0m'))
+        if pre_status==0:
+            print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+        elif pre_status==1:
+            print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+        elif pre_status==2:
+            print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+        elif pre_status==3:
+            print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+        elif pre_status==4:
+            print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+        elif pre_status==5:
+            print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
+        else:
+            print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        print('======== Pre-fit Result ========')
+        for pre_p in pre_params:
+            pre_p.Print()
+            pre_p.setConstant()
+        print('================================')
+        ###
+        params = pdf.getParameters(0)
+        status = -1
+        print('{}Performing likelihood fit of {} to {}.{}'.format('\033[1;36m', pdf.GetTitle(), data.GetTitle(), '\033[0m'))
+        for ntries in range(1, max_tries+1):
+            print ('{}kytools: Fit trial #{}.{}'.format('\033[0;36m', ntries, '\033[0m'))
+            fit_result = pdf.fitTo(data,
+                                    ROOT.RooFit.Save(True),
+                                    ROOT.RooFit.Minimizer('Minuit2', 'minimize'),
+                                    ROOT.RooFit.Strategy(strategy),
+                                    ROOT.RooFit.PrintLevel(-1),
+                                    ROOT.RooFit.Warnings(False),
+                                    ROOT.RooFit.PrintEvalErrors(-1),
+                                    ROOT.RooFit.SumW2Error(True))
+            status = fit_result.status()
+            if (status != 0):                                                                                                                              
+                params.assignValueOnly(fit_result.randomizePars())                                                                                                                              
+                ntries += 1
+            else:
+                break
+        print ('{}kytools: Likelihood fit has exited with status {}.{}'.format('\033[0;36m', status, '\033[0m'))
+        if status==0:
+            print ('{}         Likelihood fit has converged.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==1:
+            print ('{}         Covariance was made positive definite.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==2:
+            print ('{}         Hessian is invalid.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==3:
+            print ('{}         EDM is above max.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==4:
+            print ('{}         Reached call limit.{}'.format('\033[0;36m', '\033[0m'))
+        elif status==5:
+            print ('{}         Please investigate.{}'.format('\033[0;36m', '\033[0m'))
+        else:
+            print ('{}         DISASTER!{}'.format('\033[0;36m', '\033[0m'))
+        print('========== Fit Result ==========')
+        for p in params:
+            p.Print()
+        print('================================')
         self.__importToWorkspace(pdf)
         return
 
