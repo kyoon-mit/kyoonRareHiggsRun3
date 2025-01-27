@@ -3,6 +3,7 @@
     {
         "GF_2018":
         {
+            "event": {"def": ""},
             "trigger": {"def": "(HLT_Dimuon25_Jpsi or HLT_Dimuon25_Jpsi_noCorrL1)"},
             "goodMeson": {"def": "(Jpsi_kin_pt > 25)"},
             "filter_PV_npvsGood": {"filter": "(PV_npvsGood > 0)", "description": "One good PV"},
@@ -31,6 +32,7 @@
             "Jpsi_isoNeuHad": {"def": "", "name": "Jpsi_isoNeuHad", "title": "Jpsi neutral hadron isolation; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "Jpsi_kin_lxy": {"def": "", "name": "Jpsi_kin_lxy", "title": "Jpsi kin_lxy; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 1.0},
             "Jpsi_kin_sipPV": {"def": "", "name": "Jpsi_kin_sipPV", "title": "Jpsi kin_sipPV; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 5.0},
+            "filter_Jpsi_kin_sipPV": {"filter": "Jpsi_kin_sipPV[0] < 1.5", "description": "Jpsi primary vertex significance"},
             "Jpsi_doca": {"def": "", "name": "Jpsi_doca", "title": "Jpsi doca; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 0.05},
             "Jpsi_muon1_isTighMuon": {"def": "", "name": "Jpsi_muon1_isTighMuon", "title": "Jpsi muon1_isTighMuon; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
             "Jpsi_muon1_isMediumMuon": {"def": "", "name": "Jpsi_muon1_isMediumMuon", "title": "Jpsi muon1_isMediumMuon; N_{Events}", "bin": 100, "xmin": 0.0, "xmax": 2.0},
